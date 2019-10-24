@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-from lib.commands import SeqCommand as sc
-from lib import FileHandlers as fh
+from . import SeqCommand as sc
+import FileHandlers as fh
 from datetime import datetime
 import time
-from lib import HelperFunctions as hf
+import HelperFunctions as hf
 
 class WaitCmd(sc.SeqCmd):
     cmdname='Wait'

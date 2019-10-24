@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-from lib.commands import SeqCommand as sc
-from lib import HelperFunctions as hf
+from . import SeqCommand as sc
+import HelperFunctions as hf
 
 class SetCmd(sc.SeqCmd):
     """

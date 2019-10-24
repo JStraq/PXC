@@ -1,4 +1,4 @@
-from . import Apparatus as ap
+import Apparatus as ap
 import logging
 
 def instHandler(*args):

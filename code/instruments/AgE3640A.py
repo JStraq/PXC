@@ -1,5 +1,5 @@
-from lib.instruments import InstClass
-from lib.instruments import Parameter as pm
+from . import InstClass
+from .import Parameter as pm
 
 
 # If you copy this file to make a new instrument, add it to lib/__init__.py!

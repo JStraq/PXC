@@ -1,8 +1,8 @@
 import re
 import pyvisa
 
-from . import Parameter as pm
-from . import InstClass
+from instruments import InstClass
+from instruments import Parameter as pm
 
 
 # If you copy this file to make a new instrument, add it to lib/__init__.py!

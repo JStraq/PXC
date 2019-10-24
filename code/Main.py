@@ -1,8 +1,8 @@
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 
-from lib import ExpController as ec
-from lib import ExpGUI as eg
+import ExpController as ec
+import ExpGUI as eg
 #from lib import Apparatus as ap
 
 

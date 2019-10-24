@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
-from lib.commands import SeqCommand as sc
-from lib import HelperFunctions as hf
+from . import SeqCommand as sc
+import HelperFunctions as hf
 from datetime import datetime
 import numpy as np
 import time
-from lib import FileHandlers as fh
+import FileHandlers as fh
 
 class LoopCmd(sc.SeqCmd):  # command for repeating chunks of code, but varying parameter each time
     cmdname='Loop'

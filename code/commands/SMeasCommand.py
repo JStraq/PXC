@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-from lib.commands import SeqCommand as sc
-from lib import FileHandlers as fh
+from . import SeqCommand as sc
+import FileHandlers as fh
 from datetime import datetime
-from lib import HelperFunctions as hf
+import HelperFunctions as hf
 
 class SMeasCmd(sc.SeqCmd):  # PERFORM A SINGLE POINT MEASUREMENT OF THE SELECTED ITEMS
     cmdname = 'Single Measurement'

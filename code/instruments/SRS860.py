@@ -1,12 +1,12 @@
-from lib.instruments import InstClass
-from lib.instruments import Parameter as pm
+from instruments import InstClass
+from instruments import Parameter as pm
 import re
 import time
 
 
 # If you copy this file to make a new instrument, add it to lib/__init__.py!
-class SRS865(InstClass.Instrument):
-    idnString = 'Stanford_Research_Systems,SR865'
+class SRS860(InstClass.Instrument):
+    idnString = 'Stanford_Research_Systems,SR860'
 
     def __init__(self, apparatus, address, name=None):
         super().__init__(apparatus, address, name)

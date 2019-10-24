@@ -3,8 +3,8 @@ from tkinter import filedialog
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
-from lib import FileHandlers as fh
-from lib import HelperFunctions as hf
+import FileHandlers as fh
+import HelperFunctions as hf
 from datetime import datetime
 import multiprocessing as mp
 import matplotlib.dates as mdates

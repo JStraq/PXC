@@ -1,5 +1,5 @@
-from . import Parameter as pm
 from . import InstClass
+from . import Parameter as pm
 import pyvisa
 
 

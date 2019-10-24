@@ -1,5 +1,5 @@
-from lib.instruments import InstClass
-from lib.instruments import Parameter as pm
+from instruments import InstClass
+from instruments import Parameter as pm
 import re
 import time
 import pyvisa

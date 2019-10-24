@@ -1,8 +1,8 @@
 import pyvisa
 import re
-import lib.instruments as li
-import lib.commands as sc
-import lib.HelperFunctions as hf
+import instruments as li
+import commands as sc
+import HelperFunctions as hf
 import logging
 
 class Apparatus:

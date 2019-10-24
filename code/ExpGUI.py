@@ -1,21 +1,21 @@
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox as tkm
-from lib import InstHandlers as ih
-from lib import FileHandlers as fh
+import InstHandlers as ih
+import FileHandlers as fh
 import time
 import re
 import matplotlib
 import os
 import numpy as np
-from . import HelperFunctions as hf
-import lib.commands as sc
+import HelperFunctions as hf
+import commands as sc
 import multiprocessing as mp
-import lib.Apparatus as ap
+import Apparatus as ap
 import logging
 
 matplotlib.use("TkAgg")
-import lib.Plotter as plt
+import Plotter as plt
 
 class ExpGUI:
     """ Contains the general framework of the control panel itself, and
