@@ -1,8 +1,7 @@
-PXC
+Contents
 ===
 
 .. toctree::
    :maxdepth: 4
-   
-   Apparatus
-   Plotter
+
+   instruments

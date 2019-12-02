@@ -1,53 +1,53 @@
-code.commands package
+commands package
 =====================
 
 Submodules
 ----------
 
-code.commands.CMeasCommand module
+commands.CMeasCommand module
 ---------------------------------
 
-.. automodule:: code.commands.CMeasCommand
+.. automodule:: commands.CMeasCommand
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.commands.LoopCommand module
+commands.LoopCommand module
 --------------------------------
 
-.. automodule:: code.commands.LoopCommand
+.. automodule:: commands.LoopCommand
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.commands.SMeasCommand module
+commands.SMeasCommand module
 ---------------------------------
 
-.. automodule:: code.commands.SMeasCommand
+.. automodule:: commands.SMeasCommand
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.commands.SeqCommand module
+commands.SeqCommand module
 -------------------------------
 
-.. automodule:: code.commands.SeqCommand
+.. automodule:: commands.SeqCommand
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.commands.SetCommand module
+commands.SetCommand module
 -------------------------------
 
-.. automodule:: code.commands.SetCommand
+.. automodule:: commands.SetCommand
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.commands.WaitCommand module
+commands.WaitCommand module
 --------------------------------
 
-.. automodule:: code.commands.WaitCommand
+.. automodule:: commands.WaitCommand
    :members:
    :undoc-members:
    :show-inheritance:
@@ -56,7 +56,7 @@ code.commands.WaitCommand module
 Module contents
 ---------------
 
-.. automodule:: code.commands
+.. automodule:: commands
    :members:
    :undoc-members:
    :show-inheritance:

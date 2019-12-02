@@ -1,165 +1,165 @@
-code.instruments package
+instruments package
 ========================
 
 Submodules
 ----------
 
-code.instruments.AH2550 module
+instruments.AH2550 module
 ------------------------------
 
-.. automodule:: code.instruments.AH2550
+.. automodule:: instruments.AH2550
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.AgE3640A module
+instruments.AgE3640A module
 --------------------------------
 
-.. automodule:: code.instruments.AgE3640A
+.. automodule:: instruments.AgE3640A
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.InstClass module
+instruments.InstClass module
 ---------------------------------
 
-.. automodule:: code.instruments.InstClass
+.. automodule:: instruments.InstClass
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Keithley2230G module
+instruments.Keithley2230G module
 -------------------------------------
 
-.. automodule:: code.instruments.Keithley2230G
+.. automodule:: instruments.Keithley2230G
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Keithley2400 module
+instruments.Keithley2400 module
 ------------------------------------
 
-.. automodule:: code.instruments.Keithley2400
+.. automodule:: instruments.Keithley2400
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Keithley2450 module
+instruments.Keithley2450 module
 ------------------------------------
 
-.. automodule:: code.instruments.Keithley2450
+.. automodule:: instruments.Keithley2450
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Keithley6221 module
+instruments.Keithley6221 module
 ------------------------------------
 
-.. automodule:: code.instruments.Keithley6221
+.. automodule:: instruments.Keithley6221
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Keithley6517B module
+instruments.Keithley6517B module
 -------------------------------------
 
-.. automodule:: code.instruments.Keithley6517B
+.. automodule:: instruments.Keithley6517B
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.LR700 module
+instruments.LR700 module
 -----------------------------
 
-.. automodule:: code.instruments.LR700
+.. automodule:: instruments.LR700
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Lakeshore331 module
+instruments.Lakeshore331 module
 ------------------------------------
 
-.. automodule:: code.instruments.Lakeshore331
+.. automodule:: instruments.Lakeshore331
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Lakeshore335 module
+instruments.Lakeshore335 module
 ------------------------------------
 
-.. automodule:: code.instruments.Lakeshore335
+.. automodule:: instruments.Lakeshore335
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Lakeshore340 module
+instruments.Lakeshore340 module
 ------------------------------------
 
-.. automodule:: code.instruments.Lakeshore340
+.. automodule:: instruments.Lakeshore340
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.OxfordITC503 module
+instruments.OxfordITC503 module
 ------------------------------------
 
-.. automodule:: code.instruments.OxfordITC503
+.. automodule:: instruments.OxfordITC503
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.Parameter module
+instruments.Parameter module
 ---------------------------------
 
-.. automodule:: code.instruments.Parameter
+.. automodule:: instruments.Parameter
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SLACMagnet module
+instruments.SLACMagnet module
 ----------------------------------
 
-.. automodule:: code.instruments.SLACMagnet
+.. automodule:: instruments.SLACMagnet
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SR5110 module
+instruments.SR5110 module
 ------------------------------
 
-.. automodule:: code.instruments.SR5110
+.. automodule:: instruments.SR5110
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SR5210 module
+instruments.SR5210 module
 ------------------------------
 
-.. automodule:: code.instruments.SR5210
+.. automodule:: instruments.SR5210
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SRS830 module
+instruments.SRS830 module
 ------------------------------
 
-.. automodule:: code.instruments.SRS830
+.. automodule:: instruments.SRS830
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SRS860 module
+instruments.SRS860 module
 ------------------------------
 
-.. automodule:: code.instruments.SRS860
+.. automodule:: instruments.SRS860
    :members:
    :undoc-members:
    :show-inheritance:
 
-code.instruments.SRS865 module
+instruments.SRS865 module
 ------------------------------
 
-.. automodule:: code.instruments.SRS865
+.. automodule:: instruments.SRS865
    :members:
    :undoc-members:
    :show-inheritance:
@@ -168,7 +168,7 @@ code.instruments.SRS865 module
 Module contents
 ---------------
 
-.. automodule:: code.instruments
+.. automodule:: instruments
    :members:
    :undoc-members:
    :show-inheritance:

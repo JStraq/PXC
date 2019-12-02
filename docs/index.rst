@@ -11,7 +11,8 @@ PXC documentation
    :caption: Contents:
    
    dependencies
-   modules
+   commands
+   instruments
 
 
 

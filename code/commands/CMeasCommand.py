@@ -406,6 +406,24 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                     break
 
     def getMeasHeaders(self):
+        """
+        Get a list of all of the data file column headers under which this
+        sequence command will generate data.
+        
+        
+        This will be run at the beginning of a sequence to set the file
+        structure.
+        
+        Parameters
+        ----------
+        self : CMeasCommand
+            the command object instance
+        
+        Returns
+        -------
+        headers : list of strings
+            list of data file column headers
+        """
         headers = []
         for ii in range(self.rows):
             inst = self.instruments[self.stringInsts.index(self.selInsts[ii])]
