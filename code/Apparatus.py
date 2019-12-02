@@ -6,6 +6,34 @@ import HelperFunctions as hf
 import logging
 
 class Apparatus:
+    """ An Apparatus object describes the entire target experiment, which \
+    includes:
+    
+    * Instrument configuration and communication
+    * Sequence writing and execution
+    
+    Attributes
+    ----------
+    addrsList : list of str
+        The GPIB addresses which are currently detected by the drivers
+    instList : list of Instrument
+        All of the instruments accessible to the apparatus, including \
+        those which have not been
+    rm : pyvisa.ResourceManager
+        The object which handles communication between instruments
+    sequence : list of SeqCommand
+        The sequence to be run during the measurement
+    exp : ExpGUI
+        Link to the GUI
+    logger : logging.Logger
+        handles generation of log files for error reporting and metadata
+    
+    Parameters
+    ----------
+    exp : ExpGUI
+        Experiment controller object creating the apparatus.
+    """
+    
     def __init__(self, exp):
         self.addrsList = []
         self.instList = []
@@ -17,13 +45,22 @@ class Apparatus:
         self.logger = logging.getLogger(__name__)
         self.logger.info('Created an apparatus object')
 
-    """
-    When the user presses the "RUN" button, we spawn new processes to handle
-    all of the instrument communications separate from slow things like plotting
-    and updating the GUI.  This creates a copy of the apparatus settings
-    and sequence commands which can be passed to the child process.
-    """
+    
     def serialize(self):
+        """ Create a simplified, compressed description of the Apparatus.
+        
+        When the user presses the "RUN" button, we spawn new processes to \
+        handle all of the instrument communications separate from slow \
+        things like plotting and updating the GUI.  This creates a copy of \
+        the apparatus settings and sequence commands which can be passed \
+        to the child process.
+        
+        Returns
+        -------
+        serial : str
+            A single, human-readable string describing the Apparatus state.
+            It's split into sections for instruments and commands.
+        """
         serial = 'INSTRUMENTS:\n'
         # Get instruments:
         for inst in self.instList:
@@ -38,12 +75,13 @@ class Apparatus:
             serial += cmd.description()
         return serial
     
-    """
-    Take a serialized string object description of the apparatus as defined
-    on the GUI, and rebuild it.  This is intended to run once at the beginning
-    of each experiment.
-    """
+    
     def deserialize(self, serialapp, gui=None):
+        """ 
+        Take a serialized string object description of the apparatus as defined
+        on the GUI, and rebuild it.  This is intended to run once at the beginning
+        of each experiment.
+        """
         self.instList = []
         lines = serialapp.split('\n')
         stop = lines.index('COMMANDS:')
@@ -125,12 +163,16 @@ class Apparatus:
     def findInstruments(self):
         """
         Makes current the lists of instruments by doing the following:
-            -- Query all instruments on VISA for IDN strings
-            -- if it detects a newly attached instrument, it adds it to the availInstList list
-            -- if it notices an address is now missing, it removes that address from all lists
-            -- if an address has changed instrument type, it removes it from active lists and
-                   adds to available (even if it lands in the same category as before)
+        
+        * Query all instruments on VISA for IDN strings
+        * if it detects a newly attached instrument, it adds it to the list
+        * if it notices an address is now missing, it removes it from lists
+        * if an address has changed instrument type, it removes it from \
+        the active lists and add it to available.
+        
         Otherwise, instruments are left as they are.
+        
+        No parameters, no returns.
         """
 
         self.addrsList = list(self.rm.list_resources())  # Determine what addresses are available
@@ -179,6 +221,14 @@ class Apparatus:
 
 
     def get_activeInsts(self):
+        """Get the instrument objects which are currently activated.
+        
+        Returns
+        -------
+        activeInsts : list of Instrument
+            List of instrument objects currently active
+            
+        """
         activeInsts = []
         for inst in self.instList:
             if inst.name is not None:

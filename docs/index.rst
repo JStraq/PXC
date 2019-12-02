@@ -1,8 +1,3 @@
-.. PXC documentation master file, created by
-   sphinx-quickstart on Wed Oct 23 22:04:34 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 PXC documentation
 ===============================
 
@@ -10,15 +5,32 @@ PXC documentation
    :maxdepth: 2
    :caption: Contents:
    
-   dependencies
-   commands
-   instruments
-
+   intro
+   
+   usage/install
+   usage/sequence
+   usage/measure
+   usage/plot
+   usage/analyze
+   
+   dev/overview
+   dev/arch
+   dev/commands
+   dev/instruments
+   
+   funcs/Apparatus
+   funcs/Plotter
 
 
 Indices and tables
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. only:: builder_html
+
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
+
+.. only:: not builder_html
+
+   * :ref:`modindex`

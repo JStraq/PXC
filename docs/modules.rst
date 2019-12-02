@@ -1,8 +1,0 @@
-PXC
-===
-
-.. toctree::
-   :maxdepth: 4
-   
-   Apparatus
-   Plotter

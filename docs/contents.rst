@@ -1,7 +1,13 @@
 Contents
-===
+========
+
+PXC
 
 .. toctree::
    :maxdepth: 4
 
-   instruments
+   index
+   funcs/Apparatus
+   funcs/Plotter
+   funcs/commands
+   funcs/instruments
