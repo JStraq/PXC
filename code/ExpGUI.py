@@ -12,7 +12,7 @@ import HelperFunctions as hf
 import commands as sc
 import multiprocessing as mp
 import Apparatus as ap
-import logging
+import logging as lg
 
 matplotlib.use("TkAgg")
 import Plotter as plt
@@ -46,8 +46,7 @@ class ExpGUI:
         self.app = ap.Apparatus(self.exp)
 
         self.root.report_callback_exception = self.logError
-        logging.basicConfig(filename=exp.getLogPath(), level=logging.INFO)
-        self.log = logging.getLogger(__name__)
+        self.log = lg.getLogger(__name__)
 
         # create console handler and set level to info
 #        handler = logging.StreamHandler()
@@ -690,6 +689,11 @@ class ExpGUI:
             self.master.destroy()
             self.exp.closeFile()
             self.exp.kill()
+            
+            for hdlr in self.log.handlers[:]:
+                hdlr.close()
+                self.log.removeHandler(hdlr)
+            lg.shutdown()
 
     def saveSeqFile(self):
         seqFile = tk.filedialog.asksaveasfile(mode='w', defaultextension=".seq")
