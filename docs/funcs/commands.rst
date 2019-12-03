@@ -4,6 +4,17 @@ commands package
 Submodules
 ----------
 
+
+commands.SeqCommand module
+-------------------------------
+
+.. automodule:: commands.SeqCommand
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
+   
+
 commands.CMeasCommand module
 ---------------------------------
 
@@ -28,14 +39,6 @@ commands.SMeasCommand module
    :undoc-members:
    :show-inheritance:
 
-commands.SeqCommand module
--------------------------------
-
-.. automodule:: commands.SeqCommand
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 commands.SetCommand module
 -------------------------------
 
@@ -48,15 +51,6 @@ commands.WaitCommand module
 --------------------------------
 
 .. automodule:: commands.WaitCommand
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: commands
    :members:
    :undoc-members:
    :show-inheritance:

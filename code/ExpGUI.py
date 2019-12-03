@@ -21,7 +21,19 @@ class ExpGUI:
     """ Contains the general framework of the control panel itself, and
         provides all the general functions for the buttons.
         All execution starts here, then communicates with the other processes.
+        
+        Parameters
+        ----------
+        exp : ExpController
+            overarching object to enable communication between parallel \
+            processes during the run.
+        instReqQ : mp.JoinableQueue
+            Queue for requesting data or action from the instrumentation
+            process
+        fileReqQ : mp.JoinableQueue
+            Queue for requesting data or action from the file process
     """
+    
     def __init__(self, exp, instReqQ, fileReqQ):
         """ Initialize the GUI by creating the necessary placeholder variables
         """
@@ -72,7 +84,7 @@ class ExpGUI:
         # SET UP THE FRAMES FOR EVERYTHING TO SIT IN
         self.pad = 10  # space between frames
         self.master = master
-        self.master.wm_title('Pxc, v{:s}'.format(self.exp.get_version()))
+        self.master.wm_title('PXC, v{:s}'.format(self.exp.get_version()))
         self.master.attributes("-topmost", True)
         self.master.attributes("-topmost", False)
         self.root.protocol("WM_DELETE_WINDOW", self.confirm_quit)
@@ -290,8 +302,8 @@ class ExpGUI:
             top.activeListBox.insert(tk.END, str(instr))
 
     def activateInstr(self, top):
-        if (len(top.availListBox.curselection()) is not 0):  # if something in availListBox is selected
-            if (top.namebox.get() is not ''):  # and the name string box isn't empty
+        if (len(top.availListBox.curselection()) != 0):  # if something in availListBox is selected
+            if (top.namebox.get() != ''):  # and the name string box isn't empty
                 if top.namebox.get() not in [top.activeListBox.get(x).split(':')[0] for x in
                                              range(top.activeListBox.size())]:  # and the name is not a duplicate
                     instr = top.availListBox.get(tk.ACTIVE)
@@ -317,7 +329,7 @@ class ExpGUI:
                 top.instToolTip.config(text='must provide name')  # with scary red text
 
     def deactivateInstr(self, top):
-        if len(top.activeListBox.curselection()) is not 0:  # if something in activeListBox is selected
+        if len(top.activeListBox.curselection()) != 0:  # if something in activeListBox is selected
             instr = top.activeListBox.get(tk.ACTIVE)
             self.log.info('Deactivate an instrument, {:s}'.format(instr))
             name = instr.split(':')
@@ -448,9 +460,9 @@ class ExpGUI:
                 
     def runSequence(self):  # each command stores all its actions, the ExpController just stores the steps.
 
-        if (self.user.get() is '') or (self.project.get() is '') or (self.sample.get() is ''):
+        if (self.user.get() == '') or (self.project.get() == '') or (self.sample.get() == ''):
             tkm.showwarning('Nope', "Tell me what you're running so I can put it in the right folder!")
-        elif self.sequenceList.size() is 0:
+        elif self.sequenceList.size() == 0:
             tkm.showwarning('Nope', 'Uh...what sequence?')
         else:
             self.log.info('Starting Sequence Run')

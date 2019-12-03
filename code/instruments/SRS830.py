@@ -4,7 +4,6 @@ import re
 import time
 
 
-# If you copy this file to make a new instrument, add it to lib/__init__.py!
 class SRS830(InstClass.Instrument):
     idnString = 'Stanford_Research_Systems,SR830'
 
@@ -122,7 +121,6 @@ class SRS830(InstClass.Instrument):
         bufy = '_'.join(numy)
         
         self.writeParam('Reset Sample Buffer')
-        return [bufx, bufy]
         return [bufx, bufy]
         
         

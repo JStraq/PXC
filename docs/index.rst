@@ -1,25 +1,16 @@
 PXC documentation
 ===============================
 
+:Author: Josh A.W. Straquadine
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
    
    intro
-   
-   usage/install
-   usage/sequence
-   usage/measure
-   usage/plot
-   usage/analyze
-   
-   dev/overview
-   dev/arch
-   dev/commands
-   dev/instruments
-   
-   funcs/Apparatus
-   funcs/Plotter
+   usage
+   dev
+   funcs
 
 
 Indices and tables

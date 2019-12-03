@@ -88,7 +88,7 @@ class Instrument(metaclass=abc.ABCMeta):
         wparams = []
         for pm in self.params:
             if pm.write is not None:
-                if pm.type is 'cont':
+                if pm.type != 'cont':
                     wparams.append(pm)
         return wparams
 
@@ -98,7 +98,7 @@ class Instrument(metaclass=abc.ABCMeta):
         """
         wparams = []
         for pm in self.params:
-            if pm.write is not None and pm.type is 'cont' and pm.comps is None:
+            if pm.write is not None and pm.type == 'cont' and pm.comps is None:
                 wparams.append(pm)
         return wparams
 
@@ -118,7 +118,7 @@ class Instrument(metaclass=abc.ABCMeta):
         """
         qparams = []
         for pm in self.params:
-            if pm.query is not None and pm.type is 'cont':
+            if pm.query is not None and pm.type == 'cont':
                 qparams.append(pm)
         return qparams
 
@@ -128,7 +128,7 @@ class Instrument(metaclass=abc.ABCMeta):
         """
         qparams = []
         for pm in self.params:
-            if pm.query is not None and pm.type is 'cont' and pm.comps is None:
+            if pm.query is not None and pm.type == 'cont' and pm.comps is None:
                 qparams.append(pm)
         return qparams
 
@@ -169,7 +169,7 @@ class Instrument(metaclass=abc.ABCMeta):
                         self.visa.clear()
                     print(thisparam.query, end='  --  ')
                     out = self.visa.query(thisparam.query).strip()
-                    if thisparam.type is 'disc':
+                    if thisparam.type == 'disc':
                         out = '{:s},{:s}'.format(out, thisparam.labels[thisparam.vals.index(str(int(out)))])  # forces '00' to match '0'
                         print(out)
                         return [out]
@@ -223,7 +223,7 @@ class Instrument(metaclass=abc.ABCMeta):
                 if not isinstance(val, list):
                     val = [val]
 
-                if thisparam.type is 'cont':
+                if thisparam.type == 'cont':
                     fmtstring = ['{:f}' for x in range(len(val))]
                     for ii in range(len(val)):
                         try:
@@ -237,7 +237,7 @@ class Instrument(metaclass=abc.ABCMeta):
                                 val[ii] = max(val[ii], thisparam.pmin)
                         except TypeError:
                             print('Invalid Parameter!')
-                elif thisparam.type is 'disc':
+                elif thisparam.type == 'disc':
                     fmtstring = ['{:d}' for x in range(len(val))]
                     for ii in range(len(val)):
                         val[ii] = str(val[ii])
@@ -247,12 +247,12 @@ class Instrument(metaclass=abc.ABCMeta):
                             else:  # the user input the label instead of the value...alright fiiiiine
                                 val[ii] = thisparam.vals[thisparam.labels.index(val[ii])]
                 cmd = '{:s}'.format(thisparam.write)
-                if thisparam.type is not 'act':
+                if thisparam.type != 'act':
                     for ii in range(len(val)):  # for multiple inputs, use syntax 'command a,b,c'
                         delim = ' ' if ii == 0 else ','
-                        if thisparam.type is 'cont':
+                        if thisparam.type == 'cont':
                             cmd = ('{:s}{:s}' + fmtstring[ii]).format(cmd, delim, float(val[ii]))
-                        elif thisparam.type is 'disc':
+                        elif thisparam.type == 'disc':
                             cmd = ('{:s}{:s}' + fmtstring[ii]).format(cmd, delim, int(val[ii]))
                 print(cmd)
                 self.visa.write(cmd)

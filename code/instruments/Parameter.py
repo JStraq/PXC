@@ -1,6 +1,6 @@
 class Param:
     def __init__(self, name, w=None, q=None, t=None, pmin=None, pmax=None, prec=None,
-                 vals=None, labels=None, units=None, mult=1, wmacro=None, qmacro=None, count=1, comps=None):
+                 vals=None, labels=None, units=None, wmacro=None, qmacro=None, comps=None):
         self.name = name
         self.write = w
         self.query = q
@@ -14,9 +14,6 @@ class Param:
         self.prec = prec
         self.pmin = pmin
         self.pmax = pmax
-        
-        self.mult = mult       # converts between display units and comm units.
-        # If you want to input in mA but the device expects amps, mult = 1e-3.
         
         
         if vals is not None:
@@ -33,7 +30,7 @@ class Param:
         self.wmacro = wmacro  # Function to run when it's too complicated to write one line at a time
         self.qmacro = qmacro  # Function to run when it's too complicated to read one line at a time
 
-        if self.type is "cont":
+        if self.type == "cont":
             if self.comps is not None:
                 if not isinstance(self.units, list):            # if there's a list of components but only one unit
                     self.units = [self.units for comp in self.comps]  # assume all components have the same unit

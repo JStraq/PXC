@@ -124,7 +124,7 @@ class Apparatus:
         while index<len(lines):
             line = lines[index]
             index += 1
-            if line is not '':
+            if line != '':
                 if re.match('Sequence Command', line) is not None:
                    allSteps.append({})
                 elif line[0] == '\t':
@@ -134,7 +134,7 @@ class Apparatus:
                            val = re.search('= (.+)', line.strip()).group(1)
                        except AttributeError:
                            val = ''
-                       if val is not '':
+                       if val != '':
                            if val[0] == '[':
                                val = val.split(',')
                                val = [x.strip('[]"\' ') for x in val]
