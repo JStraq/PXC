@@ -34,26 +34,28 @@ class ExpGUI:
             Queue for requesting data or action from the file process
     """
     
-    def __init__(self, exp, instReqQ, fileReqQ):
+    def __init__(self, exp, instReqQ, fileReqQ, logQ):
         """ Initialize the GUI by creating the necessary placeholder variables
         """
         self.exp = exp
         self.instReqQ = instReqQ
         self.fileReqQ = fileReqQ
+        self.logQ = logQ
         self.root = tk.Tk()
         self.insertType = None
         self.seqFileName = None
-        self.app = ap.Apparatus(self.exp)
+        self.app = ap.Apparatus(self.exp, self.logQ)
 
         self.root.report_callback_exception = self.logError
-        self.log = lg.getLogger(__name__)
+        
 
         # create console handler and set level to info
 #        handler = logging.StreamHandler()
 #        handler.setLevel(logging.INFO)
 #        formatter = logging.Formatter("%(levelname)s - %(message)s")
 #        handler.setFormatter(formatter)
-#        self.log.addHandler(handler)
+#        self.logger.addHandler(handler)
+        self.logger = lg.getLogger('pxc_log')
 
         # # Plot settings
 
@@ -72,7 +74,8 @@ class ExpGUI:
         self.drawGUI(self.root)
 
     def logError(self, exception, value, traceback):
-        self.log.exception(exception)
+        self.logger.exception(exception)
+#        self.logger.info(exception)
 
     def drawGUI(self, master):
         """ Actually build the window itself, and dictate which widget goes where
@@ -150,7 +153,7 @@ class ExpGUI:
         self.activeListBox = tk.Listbox(self.frameExp, height=10, width=45)
         self.activeListBox.grid(column=0, row=1, sticky='NSEW', pady=10, padx=5, columnspan=4)
 
-        monspacing = 10
+#        monspacing = 10
 
         self.statusFrame = tk.Frame(self.frameExp, relief=tk.RIDGE, borderwidth=1)
         self.statusFrame.grid(row=2, column=0, columnspan=3, sticky='NSEW', padx=10, pady=10)
@@ -203,7 +206,7 @@ class ExpGUI:
             self.frameSeq.grid_rowconfigure(x, weight=0)
         self.frameSeq.grid_rowconfigure(6, weight=1)
         
-        self.log.info('Finished Building GUI')
+        self.logger.info('Finished Building GUI')
 
     def startGUI(self):
         """ Starts the loop which handles all GUI input and output
@@ -211,10 +214,10 @@ class ExpGUI:
         print('gui_init')
         tk.mainloop()  # This is where the GUI itself runs: the mainloop handles all events
         
-        self.log.info('GUI exit')
+        self.logger.info('GUI exit')
         self.exp.kill() # once the GUI closes, trigger destruction of other processes
         self.app.rm.close()
-        self.log.info('Close apparatus pyvisa resourcemanager')
+        self.logger.info('Close apparatus pyvisa resourcemanager')
         
         return None
         
@@ -226,7 +229,7 @@ class ExpGUI:
         These labels end up in the column headers.
         """
         # Set up the popup window
-        self.log.info('Open the BuildExperimentDialog')
+        self.logger.info('Open the BuildExperimentDialog')
         top = tk.Toplevel()
         top.protocol("WM_DELETE_WINDOW", lambda: self.cancelBuildExp(top))
         top.minsize(width=600, height=300)
@@ -282,7 +285,7 @@ class ExpGUI:
         """
         Perform a VISA refresh on the apparatus, then push changes to the BuildExp GUI dialog
         """
-        self.log.info('Refreshing the BuildExperiment dialog')
+        self.logger.info('Refreshing the BuildExperiment dialog')
         self.app.findInstruments()
         
         top.activeListBox.delete(0, tk.END)
@@ -306,11 +309,11 @@ class ExpGUI:
                 if top.namebox.get() not in [top.activeListBox.get(x).split(':')[0] for x in
                                              range(top.activeListBox.size())]:  # and the name is not a duplicate
                     instr = top.availListBox.get(tk.ACTIVE)
-                    self.log.info('Trying to activate an instrument, {:s}'.format(instr))
+                    self.logger.info('Trying to activate an instrument, {:s}'.format(instr))
                     top.availListBox.delete(tk.ACTIVE)  # remove from gui available box
                     top.activeListBox.insert(tk.END, '{:s}:{:s}'.format(top.namebox.get(),
                                                                         str(instr)))  # add it to the gui active box
-                    self.log.info('Success, instrument {:s} activated'.format(top.activeListBox.get(tk.END)))
+                    self.logger.info('Success, instrument {:s} activated'.format(top.activeListBox.get(tk.END)))
                     top.instToolTip.config(text='')  # stop yelling at user, they did ok.
                     top.namebox.delete(0, tk.END)
 
@@ -321,16 +324,16 @@ class ExpGUI:
                         top.activeListBox.insert(tk.END, str(instr))
 
                 else:
-                    self.log.info('Failed, name is a duplicate')
+                    self.logger.info('Failed, name is a duplicate')
                     top.instToolTip.config(text='name already taken')  # yell at user for doing it wrong
             else:
-                self.log.info('Failed, no name given')
+                self.logger.info('Failed, no name given')
                 top.instToolTip.config(text='must provide name')  # with scary red text
 
     def deactivateInstr(self, top):
         if len(top.activeListBox.curselection()) != 0:  # if something in activeListBox is selected
             instr = top.activeListBox.get(tk.ACTIVE)
-            self.log.info('Deactivate an instrument, {:s}'.format(instr))
+            self.logger.info('Deactivate an instrument, {:s}'.format(instr))
             name = instr.split(':')
             top.activeListBox.delete(tk.ACTIVE)  # delete it from the gui "active" listbox
             top.availListBox.insert(tk.END, '{:s}:{:s}'.format(name[1], name[2]))  # put it back
@@ -351,12 +354,12 @@ class ExpGUI:
         '''
 
         insts = self.app.instList
-        self.log.info('Pushing BuildExp changes to main GUI')
-        self.log.info('Instruments:')
+        self.logger.info('Pushing BuildExp changes to main GUI')
+        self.logger.info('Instruments:')
         strings = [x.split(':',1)[1] for x in top.activeListBox.get(0, tk.END)]
         
         for inst in insts:
-            self.log.info('\t'+str(inst))
+            self.logger.info('\t'+str(inst))
             inst.clearName()
             if str(inst) not in top.availListBox.get(0, tk.END):
                 names = [x.split(':')[0] for x in top.activeListBox.get(0, tk.END)]
@@ -372,18 +375,18 @@ class ExpGUI:
         top.destroy()  # close this dialog
 
     def cancelBuildExp(self, top):
-        self.log.info('Canceling BuildExp')
+        self.logger.info('Canceling BuildExp')
         top.grab_release()
         top.destroy()
 
     def updateStatus(self):
-        self.log.info('Updating main GUI status indicator')
+        self.logger.info('Updating main GUI status indicator')
         es = self.exp.getStatus()
         for ii in range(len(self.status)):
             self.status[ii]['text'] = es[ii]
 
     def refreshInstruments(self):
-        self.log.info('Refreshing the instrument lists')
+        self.logger.info('Refreshing the instrument lists')
         activeInsts = []
         for inst in self.app.instList:
             if inst.name is not None:
@@ -395,10 +398,10 @@ class ExpGUI:
 
     # SEQUENCE FUNCTIONS ---------------------------------------------------------------------------------------------------------------
     def insertSeqStep(self):
-        self.log.info('Inserting a new sequence step')
+        self.logger.info('Inserting a new sequence step')
         self.insertType = None
         self.chooseStepType()  # open the step type selection window
-        self.log.info('Selected InsertType {:s}'.format(str(self.insertType)))
+        self.logger.info('Selected InsertType {:s}'.format(str(self.insertType)))
         if self.insertType is not None:
             position = 0
             if len(self.sequenceList.curselection()) == 0:
@@ -419,7 +422,7 @@ class ExpGUI:
             tkm.showerror(title='Nope', message="No active instruments!")
             return
         else:
-            self.log.info('Selecting step type')
+            self.logger.info('Selecting step type')
             top = tk.Toplevel()
             hf.centerWindow(top)
             top.grab_set()
@@ -440,13 +443,13 @@ class ExpGUI:
             self.root.wait_window(top)
 
     def setInsertType(self, top, insertType):  # when the user picks an item to insert,
-        self.log.info('Setting insertType')
+        self.logger.info('Setting insertType')
         self.insertType = insertType  # store it
         top.grab_release()
         top.destroy()  # and close the dialog
 
     def updateSequence(self):
-        self.log.info('Updating sequence to GUI')
+        self.logger.info('Updating sequence to GUI')
         self.app.updateTitles()
         self.sequenceList.delete(0, tk.END)
         newSequence = self.app.sequence
@@ -464,7 +467,7 @@ class ExpGUI:
         elif self.sequenceList.size() == 0:
             tkm.showwarning('Nope', 'Uh...what sequence?')
         else:
-            self.log.info('Starting Sequence Run')
+            self.logger.info('Starting Sequence Run')
             self.exp.runSeq()
             self.runSeqButton['state'] = 'disabled'  # disable the sequence buttons to prevent shenanigans
             self.insertSeqButton['state'] = 'disabled'
@@ -515,7 +518,7 @@ class ExpGUI:
             self.sequenceWatcher()  # instigate the watchdog
 
     def writeMeta(self, dataDir, filename):
-        self.log.info('Opening Meta file')
+        self.logger.info('Opening Meta file')
         metaDir = dataDir + 'meta/'
         if not os.path.exists(metaDir):
             os.makedirs(metaDir)
@@ -532,9 +535,9 @@ class ExpGUI:
             f.write(self.app.serialize().replace('COMMANDS:', '\nCOMMANDS:'))
 
     def sequenceWatcher(self):
-        self.log.info('Checking on run')
+        self.logger.info('Checking on run')
         if not self.exp.isRunning():
-            self.log.info('Run detected as complete')
+            self.logger.info('Run detected as complete')
             self.runSeqButton['state'] = 'normal'
             self.insertSeqButton['state'] = 'normal'
             self.disableButton['state'] = 'normal'
@@ -559,14 +562,14 @@ class ExpGUI:
             self.root.after(1000, self.sequenceWatcher)  # update the gui every 1000 ms
 
     def editSeqStep(self, event):  # if you double-click on a step in the list, open its 'edit' dialog
-        self.log.info('Editing sequence step:')
+        self.logger.info('Editing sequence step:')
         if len(self.app.sequence)>0:
             if len(self.activeListBox.get(0,tk.END)) != 0:  # only edit if at least SOMETHING is active.
                 ii = self.sequenceList.curselection()[0]
 
                 self.app.sequence[ii].edit(running=self.exp.isRunning())
                 self.app.updateTitles()
-                self.log.info('\t' + str(self.app.sequence[ii]))
+                self.logger.info('\t' + str(self.app.sequence[ii]))
 
                 self.updateSequence()
             else:
@@ -689,11 +692,6 @@ class ExpGUI:
             self.master.destroy()
             self.exp.closeFile()
             self.exp.kill()
-            
-            for hdlr in self.log.handlers[:]:
-                hdlr.close()
-                self.log.removeHandler(hdlr)
-            lg.shutdown()
 
     def saveSeqFile(self):
         seqFile = tk.filedialog.asksaveasfile(mode='w', defaultextension=".seq")

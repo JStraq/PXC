@@ -9,8 +9,6 @@ from datetime import datetime
 import multiprocessing as mp
 import matplotlib.dates as mdates
 
-import logging
-
 class Plot:
     def __init__(self):
 
@@ -51,7 +49,6 @@ class Plot:
 
 class PlotManager:
     def __init__(self, master, row, col, exp, fileReqQ):
-        self.log = logging.getLogger(__name__)
         self.plotfile = 'None selected'
         self.exp = exp
         self.fileReqQ = fileReqQ
@@ -98,7 +95,7 @@ class PlotManager:
             self.plotCanvases[ii].show()
 
     def changePlotSettings(self):
-        self.log.info('Change Plot Settings:')
+#        self.log.info('Change Plot Settings:')
         index = 0
 
         self.window = tk.Toplevel(self.master)
@@ -344,11 +341,11 @@ class PlotManager:
         self.updatePlots(newSettings=True)
         self.window.destroy()
         
-        self.log.info(str(self.plots[0].__dict__))
+#        self.log.info(str(self.plots[0].__dict__))
 
     def chooseDataFile(self):
         self.plotFileName = filedialog.askopenfilename(filetypes=(("Data Files", "*.dat"), ("All files", "*.*")))
-        if self.plotFileName is not '':
+        if self.plotFileName != '':
             self.pathLabel['text'] = self.plotFileName
 
             if not self.exp.isFileOpen():
@@ -376,7 +373,7 @@ class PlotManager:
         pass
 
     def updatePlots(self, newSettings=False):
-        self.log.info('Updating Plots')
+#        self.log.info('Updating Plots')
         if self.plots[0].isSetup:
             if not self.plots[0].autox:
                 xlim = self.subplots[0].get_xlim()
@@ -390,7 +387,7 @@ class PlotManager:
             if True in self.plots[0].onRightAx:
                 if self.twinaxes[0] is None:
                     self.twinaxes[0] = self.subplots[0].twinx()
-            if self.plots[0].xparam is not '':
+            if self.plots[0].xparam != '':
                 if not self.exp.isFileOpen():
                     self.exp.openFile()
                     fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
@@ -418,7 +415,7 @@ class PlotManager:
                                 for ii, yp in enumerate(self.plots[0].yparams):
                                     if yp in keys:
                                         try:
-                                            if record[self.plots[0].xparam] is not '-' and record[yp] is not '-':
+                                            if (record[self.plots[0].xparam] != '-') and (record[yp] != '-'):
                                                 if self.plots[0].xparam == 'Timestamp':
                                                     try:
                                                         record[self.plots[0].xparam] = datetime.strptime(record[self.plots[0].xparam], '%Y-%m-%d %H:%M:%S.%f')

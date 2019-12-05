@@ -1,38 +1,36 @@
 from datetime import datetime
 import numpy as np
-import logging
+import logging as lg
 
 
 def fileHandler(args):
     print('init_files')
-    exp, fileReqQ= args
+    exp, fileReqQ, logQ = args
+    logger = lg.getLogger('pxc_logs')
+    logger.info('Start File Process')
     
-    logging.basicConfig(filename=exp.getLogPath()+'f', level=logging.INFO)
-    log = logging.getLogger(__name__)
-    log.info('Start File Process')
-    
-    database = dataBase()
+    dbase = DataBase()
     
     while not exp.get_killFlag():
         if not fileReqQ.empty():
             try:
                 req = fileReqQ.get()
             except EOFError as e:
-                log.info('FileReqQ has crashed')
-                log.exception(e)
+                logger.info('FileReqQ has crashed')
+                logger.info(e)
             try:
                 if req.type == 'Read Latest':
-                    exp.set_fileLatest(req.execute(database))
+                    exp.set_fileLatest(req.execute(dbase))
                 else:
-                    exp.set_fileAns(req.execute(database))
+                    exp.set_fileAns(req.execute(dbase))
             except Exception as e:
-                log.info('Unhandled exception happened in file process')
-                log.info('while processing {:s}-type fileRequest'.format(req.type))
-                log.exception(e)
+                logger.info('Unhandled exception happened in file process')
+                logger.info('while processing {:s}-type fileRequest'.format(req.type))
+                logger.info(e)
             fileReqQ.task_done()
 
-    if database is not None:
-        database.closefile()  # don't do drugs, close your files, stay in school
+    if dbase is not None:
+        dbase.closefile()  # don't do drugs, close your files, stay in school
     print('kill_files')
 
 
@@ -42,57 +40,57 @@ class fileRequest:
         self.type = reqtype
         self.args = args
 
-    def execute(self, database):
+    def execute(self, dbase):
         if self.type == 'New File':
             (filepath, headers) = self.args
-            database.startfile(filepath, headers)
+            dbase.startfile(filepath, headers)
             return None
 
         elif self.type == 'Open File':
             filepath = self.args
-            headers = database.openfile(filepath)
+            headers = dbase.openfile(filepath)
             return headers
 
         elif self.type == 'Write Line':
-            if database.file is not None:
+            if dbase.file is not None:
                 record = self.args
-                database.writeline(record)
+                dbase.writeline(record)
             return None
 
         elif self.type == 'Close File':
-            database.closefile()
+            dbase.closefile()
             return None
 
         elif self.type == 'Get Current File':
-            return database.filepath, database.headers
+            return dbase.filepath, dbase.headers
 
         elif self.type == 'Read Unread':
-            return database.readUnread()
+            return dbase.readUnread()
 
         elif self.type == 'Read Latest':
-            return database.latest
+            return dbase.latest
 
         elif self.type == 'Read All':
             hardlimit = 2000
 
             (xparam, yparams) = self.args
-            if database.file is not None:
-                database.clearUnread()
-                xindex = database.headers.index(xparam)
-                yindices = [database.headers.index(yparam) for yparam in yparams]
+            if dbase.file is not None:
+                dbase.clearUnread()
+                xindex = dbase.headers.index(xparam)
+                yindices = [dbase.headers.index(yparam) for yparam in yparams]
                 xdata = [[] for yi in yindices]
                 ydata = [[] for yi in yindices]
                 try:
-                    database.file.seek(0, 0)
-                    database.file.readline()
+                    dbase.file.seek(0, 0)
+                    dbase.file.readline()
                 except ValueError:
-                    database.openfile(database.filepath)
-                    database.file.seek(0, 0)
-                    database.file.readline()
-                for line in database.file:
+                    dbase.openfile(dbase.filepath)
+                    dbase.file.seek(0, 0)
+                    dbase.file.readline()
+                for line in dbase.file:
                     line = line.strip().split('\t')
                     for ii, yindex in enumerate(yindices):
-                        if line[xindex] is not '-' and line[yindex] is not '-':
+                        if (line[xindex] != '-') and (line[yindex] != '-'):
                             if xparam == 'Timestamp':
                                 xdata[ii].append(datetime.strptime(line[xindex], '%Y-%m-%d %H:%M:%S.%f'))
                             else:
@@ -123,7 +121,7 @@ class fileRequest:
             print('Unknown file request!')
 
 
-class dataBase:
+class DataBase:
     def __init__(self):
         self.filepath = None
         self.headers = None
@@ -178,3 +176,4 @@ class dataBase:
 
     def clearUnread(self):
         self.unread = []
+    

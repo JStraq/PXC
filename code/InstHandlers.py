@@ -4,9 +4,8 @@ import logging
 def instHandler(*args):
     exp, instReqQ, fileReqQ, appcopy = args
     
-    logging.basicConfig(filename=exp.getLogPath()+'i', level=logging.INFO)
-    log = logging.getLogger(__name__)
-    log.info('Start Inst Process')
+    logger = logging.getLogger('pxc_log')
+    logger.info('Start Inst Process')
     
     print('inst_init')
     try:
@@ -15,8 +14,8 @@ def instHandler(*args):
         app.runSequence(fileReqQ)
         exp.endSeq()
     except Exception as e:
-        log.info('Unhandled exception occured in instHandlers:')        
-        log.exception(e)
+        logger.info('Unhandled exception occured in instHandlers:')        
+        logger.exception(e)
 
     print('kill_insts')
     return None

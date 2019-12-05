@@ -1,8 +1,5 @@
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
-from datetime import datetime as dt
-import os
-import logging as lg
 
 
 
@@ -84,12 +81,7 @@ class ExpController:
         self.q = self.manager.Queue()
         self.filepath = ''
 
-        if not os.path.exists(r'C:/Data/PXCLogs'):
-            os.makedirs(r'C:/Data/PXCLogs')
-        self.logpath = 'C:/Data/PXCLogs/PxcSession_{:s}.log'.format(dt.strftime(dt.now(),'%Y-%m-%d_%H-%M-%S'))
 #        print(self.logpath)
-        self.log = lg.getLogger(__name__)
-        print(self.log)
 #        print(self.log)
 #        
 
@@ -168,19 +160,12 @@ class ExpController:
         self.instAns = il
     
     def abort(self):
-        self.log.info('abortFlag set')
         self.abortFlag = True
         self.running = False
     
     def kill(self):
-        self.log.info('killFlag set')
         self.abortFlag = True
         self.killFlag = True
-        
-        for hdlr in self.log.handlers[:]:
-            hdlr.close()
-            self.log.removeHandler(hdlr)
-        lg.shutdown()
     
     def runSeq(self):
         self.abortFlag = False

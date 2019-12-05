@@ -3,7 +3,7 @@ import re
 import instruments as li
 import commands as sc
 import HelperFunctions as hf
-import logging
+import logging as lg
 
 class Apparatus:
     """ An Apparatus object describes the entire target experiment, which \
@@ -34,15 +34,14 @@ class Apparatus:
         Experiment controller object creating the apparatus.
     """
     
-    def __init__(self, exp):
+    def __init__(self, exp, logQ):
         self.addrsList = []
         self.instList = []
         self.rm = pyvisa.ResourceManager()
         self.sequence = []
         self.exp = exp
+        self.logger = lg.getLogger('pxc_log')
         
-        logging.basicConfig(filename=exp.getLogPath(), level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
         self.logger.info('Created an apparatus object')
 
     
@@ -366,6 +365,7 @@ class Apparatus:
         self.exp.finish()
 
         print('done!')
+        self.self.logger.info('Sequence Finished!')
 
 
     def deleteSteps(self, indices):
