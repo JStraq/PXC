@@ -92,7 +92,7 @@ class PlotManager:
         for ii,subplot in enumerate(self.subplots):
             subplot.clear()
             self.plots[ii].alldata = [([],[]) for y in self.plots[ii].yparams]
-            self.plotCanvases[ii].show()
+            self.plotCanvases[ii].draw()
 
     def changePlotSettings(self):
 #        self.log.info('Change Plot Settings:')
@@ -515,5 +515,5 @@ class PlotManager:
                         else:
                             self.twinaxes[index].set_ylabel(', '.join(set(units)), fontsize=self.plots[0].labelsize)
                     self.figures[index].tight_layout()
-                    self.plotCanvases[index].show()                
+                    self.plotCanvases[index].draw()                
                         

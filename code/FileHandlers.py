@@ -6,8 +6,9 @@ import logging as lg
 def fileHandler(args):
     print('init_files')
     exp, fileReqQ, logQ = args
-    logger = lg.getLogger('pxc_logs')
+    logger = lg.getLogger('pxc_log')
     logger.info('Start File Process')
+    
     
     dbase = DataBase()
     
@@ -16,7 +17,7 @@ def fileHandler(args):
             try:
                 req = fileReqQ.get()
             except EOFError as e:
-                logger.info('FileReqQ has crashed')
+                logger.info('FileReqQ has crashed',)
                 logger.info(e)
             try:
                 if req.type == 'Read Latest':

@@ -34,28 +34,20 @@ class ExpGUI:
             Queue for requesting data or action from the file process
     """
     
-    def __init__(self, exp, instReqQ, fileReqQ, logQ):
+    def __init__(self, exp, instReqQ, fileReqQ):
         """ Initialize the GUI by creating the necessary placeholder variables
         """
+        
+        self.logger = lg.getLogger('pxc_log.GUI')
         self.exp = exp
         self.instReqQ = instReqQ
         self.fileReqQ = fileReqQ
-        self.logQ = logQ
         self.root = tk.Tk()
         self.insertType = None
         self.seqFileName = None
-        self.app = ap.Apparatus(self.exp, self.logQ)
+        self.app = ap.Apparatus(self.exp)
 
         self.root.report_callback_exception = self.logError
-        
-
-        # create console handler and set level to info
-#        handler = logging.StreamHandler()
-#        handler.setLevel(logging.INFO)
-#        formatter = logging.Formatter("%(levelname)s - %(message)s")
-#        handler.setFormatter(formatter)
-#        self.logger.addHandler(handler)
-        self.logger = lg.getLogger('pxc_log')
 
         # # Plot settings
 
@@ -72,6 +64,7 @@ class ExpGUI:
         self.monHeaders = []
 
         self.drawGUI(self.root)
+        
 
     def logError(self, exception, value, traceback):
         self.logger.exception(exception)
@@ -498,13 +491,14 @@ class ExpGUI:
             # Set up the instrument communication process
             appcopy = self.app.serialize()
             instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, appcopy])
+            instproc.name = '##\tinstHandler'
             instproc.start()
 
             # Set up the file reading and writing process
-            if not self.exp.isFileOpen():
-                self.exp.openFile()
-                fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
-                fileproc.start()
+#            if not self.exp.isFileOpen():
+#            self.exp.openFile()
+#            fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
+#            fileproc.start()
 
             self.framePlt.plotfile = filename
             self.framePlt.clearPlots()

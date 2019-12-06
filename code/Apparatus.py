@@ -34,7 +34,7 @@ class Apparatus:
         Experiment controller object creating the apparatus.
     """
     
-    def __init__(self, exp, logQ):
+    def __init__(self, exp):
         self.addrsList = []
         self.instList = []
         self.rm = pyvisa.ResourceManager()
@@ -365,7 +365,7 @@ class Apparatus:
         self.exp.finish()
 
         print('done!')
-        self.self.logger.info('Sequence Finished!')
+        self.logger.info('Sequence Finished!')
 
 
     def deleteSteps(self, indices):

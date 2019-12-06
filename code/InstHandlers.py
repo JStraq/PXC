@@ -1,11 +1,14 @@
 import Apparatus as ap
-import logging
+import logging as lg
+
+modlogger = lg.getLogger('pxc_logs.IH')
 
 def instHandler(*args):
     exp, instReqQ, fileReqQ, appcopy = args
     
-    logger = logging.getLogger('pxc_log')
-    logger.info('Start Inst Process')
+    logger = lg.getLogger('pxc_logs.IH2')
+    logger.setLevel(lg.DEBUG)
+    logger.info('Starting Instrument Process--------------------------------------------------------')
     
     print('inst_init')
     try:
@@ -20,6 +23,7 @@ def instHandler(*args):
     print('kill_insts')
     return None
    
+
 
 class instRequest:
     def __init__(self, reqtype, args=None):
