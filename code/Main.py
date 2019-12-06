@@ -2,14 +2,9 @@ import multiprocessing as mp
 import ExpController as ec
 import ExpGUI as eg
 import logging
-import os
-from datetime import datetime as dt
 import LogHandlers as lh
 import importlib
-import time
-import threading
 importlib.reload(logging)
-#from lib import Apparatus as ap
 
 if __name__ == "__main__":
     mp.current_process().name = 'root'
@@ -23,59 +18,38 @@ if __name__ == "__main__":
         
         
         ####### SET UP LOGGING #######
-        d = {
-        'version': 1,
-        'disable_existing_loggers': True,
-        'formatters': {
-            'detailed': {
-                'class': 'logging.Formatter',
-                'format': '%(asctime)s %(name)-15s %(levelname)-8s %(processName)-10s %(message)s'
-            },
-            'simple': {
-                'class': 'logging.Formatter',
-                'format': '%(name)-15s %(levelname)-8s %(processName)-10s %(message)s'
-            }
-        },
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-                'level': 'INFO',
-            },
-            'file': {
-                'class': 'logging.FileHandler',
-                'filename': 'C:/Data/PXCLogs/alog.log',
-                'mode': 'w',
-                'formatter': 'detailed',
-                'level': 'DEBUG'
-            },
-        },
-        'loggers': {
-            'gui': {
-                'handlers': ['console']
-            },
-        },
-        'root': {
-            'level': 'DEBUG',
-            'handlers': ['file']
-        },
-    }          
         
-                    
-        logging.config.dictConfig(d)
-        listener = logging.handlers.QueueListener(logQ, lh.LogHandler())
-        listener.start()
+        logqueuehand = logging.handlers.QueueHandler(logQ)
+        logfilehand = logging.FileHandler('C:/Data/PXCLogs/alog.log', mode='w')
+#        logfilehand = lh.LogHandler()
+        logconhand = logging.StreamHandler()
+        logfilehand.setLevel(logging.DEBUG)
+        logqueuehand.setLevel(logging.DEBUG)
+        logconhand.setLevel(logging.WARNING)
+        recfmt = logging.Formatter('%(asctime)s\t %(name)-8s %(levelname)-8s %(processName)-8s %(message)s')
+        metafmt = logging.Formatter('%####\t%(message)-50s####')
+        confmt = logging.Formatter('%(message)s')
+        logfilehand.setFormatter(recfmt)
+        logconhand.setFormatter(confmt)
         
         
-        ### GET THIS PARTY STARTED ###
+#        listener = logging.handlers.QueueListener(logQ, logfilehand)
+        listener = lh.PXCLogger(logQ, (logfilehand, logconhand))
+        listener.start()        
         
-        print('Code Version {:s}'.format(exp.get_version()))
-        print('Running on {:d} CPUs'.format(mp.cpu_count()))
+        logroot = logging.getLogger('root')
+        logroot.addHandler(logqueuehand)
+        logmeta = logging.getLogger('meta')
+        logmeta.addHandler(logqueuehand)
+        
+        logmeta.critical('Code Version %s' % exp.get_version())
+        logmeta.critical('Running on %d CPUs' % mp.cpu_count())
+        
         
        # START YOUR ENGINES
+                
         gui = eg.ExpGUI(exp, instReqQ, fileReqQ, logQ)  # Build the GUI        
         gui.startGUI()
 
-        mp.stop_event.wait()
-        listener.stop()
-        
+        listener.stop()       
         logging.shutdown()

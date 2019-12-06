@@ -9,8 +9,7 @@ def instHandler(*args):
     logger.setLevel(logging.DEBUG)
     logger.addHandler(qh)
     
-
-    logger.info('Starting Instrument Process--------------------------------------------------------')
+    logger.info('Starting Instrument Process')
     
     print('inst_init')
     try:

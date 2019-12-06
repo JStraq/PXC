@@ -1,13 +1,18 @@
 from datetime import datetime
 import numpy as np
-import logging as lg
+import logging
 
 
 def fileHandler(args):
     print('init_files')
     exp, fileReqQ, logQ = args
-    logger = lg.getLogger('pxc_log')
-    logger.info('Start File Process')
+    
+    qh = logging.handlers.QueueHandler(logQ)
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(qh)
+    
+    logger.info('Starting File Process')
     
     
     dbase = DataBase()

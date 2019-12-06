@@ -491,14 +491,15 @@ class ExpGUI:
             # Set up the instrument communication process
             appcopy = self.app.serialize()
             instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, self.logQ, appcopy])
-            instproc.name = '##\tinstHandler'
+            instproc.name = 'inst'
             instproc.start()
 
             # Set up the file reading and writing process
 #            if not self.exp.isFileOpen():
-#            self.exp.openFile()
-#            fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
-#            fileproc.start()
+            self.exp.openFile()
+            fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
+            instproc.name = 'file'
+            fileproc.start()
 
             self.framePlt.plotfile = filename
             self.framePlt.clearPlots()
