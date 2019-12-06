@@ -5,7 +5,7 @@ def instHandler(*args):
     exp, instReqQ, fileReqQ, logQ, appcopy = args
     
     qh = logging.handlers.QueueHandler(logQ)
-    logger = logging.getLogger()
+    logger = logging.getLogger('inst')
     logger.setLevel(logging.DEBUG)
     logger.addHandler(qh)
     
@@ -13,7 +13,7 @@ def instHandler(*args):
     
     print('inst_init')
     try:
-        app = ap.Apparatus(exp)
+        app = ap.Apparatus(exp, logQ)
         app.deserialize(appcopy)
         app.runSequence(fileReqQ)
         exp.endSeq()

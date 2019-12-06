@@ -1,9 +1,6 @@
 import logging
 import logging.config
 import logging.handlers
-import os
-from datetime import datetime as dt
-
 
 class PXCLogger(logging.handlers.QueueListener):
     def __init__(self, logQ, handlers):
@@ -17,14 +14,19 @@ class PXCLogger(logging.handlers.QueueListener):
         self.filehand = self.handlers[0][0]
         self.conhand = self.handlers[0][1]
         self.recfmt = logging.Formatter('%(asctime)s\t %(name)-8s %(levelname)-8s %(processName)-8s %(message)s')
-        self.metafmt = logging.Formatter('####\t%(message)-50s####')
-        self.fmts = {'root': self.recfmt,
-                     'meta': self.metafmt}
+        self.metafmt = logging.Formatter('#####\t\t%(message)s')
         
+        self.filehand.setFormatter(self.recfmt)
+       
 
     def handle(self, record):
-        self.filehand.setFormatter(self.fmts[record.name])
-        self.filehand.handle(record)
+        if record.name == 'meta':
+            self.filehand.setFormatter(self.metafmt)
+            self.filehand.handle(record)
+            self.filehand.setFormatter(self.recfmt)
+        else:
+            self.filehand.handle(record)
+        
         
 #        self.conhand.setFormatter(self.fmts[record.name])
         self.conhand.handle(record)

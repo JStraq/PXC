@@ -8,7 +8,7 @@ def fileHandler(args):
     exp, fileReqQ, logQ = args
     
     qh = logging.handlers.QueueHandler(logQ)
-    logger = logging.getLogger()
+    logger = logging.getLogger('file')
     logger.setLevel(logging.DEBUG)
     logger.addHandler(qh)
     

@@ -37,15 +37,18 @@ class ExpGUI:
     def __init__(self, exp, instReqQ, fileReqQ, logQ):
         """ Initialize the GUI by creating the necessary placeholder variables
         """
-        self.logger = logging.getLogger('gui')
         self.exp = exp
         self.instReqQ = instReqQ
         self.fileReqQ = fileReqQ
         self.logQ = logQ
+        self.logger = logging.getLogger('gui')        
+        self.logger.addHandler(logging.handlers.QueueHandler(logQ))
+        self.logger.setLevel(logging.DEBUG)
+        
         self.root = tk.Tk()
         self.insertType = None
         self.seqFileName = None
-        self.app = ap.Apparatus(self.exp)
+        self.app = ap.Apparatus(self.exp, logQ)
 
         self.root.report_callback_exception = self.logError
 
@@ -498,7 +501,7 @@ class ExpGUI:
 #            if not self.exp.isFileOpen():
             self.exp.openFile()
             fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
-            instproc.name = 'file'
+            fileproc.name = 'file'
             fileproc.start()
 
             self.framePlt.plotfile = filename

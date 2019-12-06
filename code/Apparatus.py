@@ -34,13 +34,16 @@ class Apparatus:
         Experiment controller object creating the apparatus.
     """
     
-    def __init__(self, exp):
+    def __init__(self, exp, logQ):
         self.addrsList = []
         self.instList = []
         self.rm = pyvisa.ResourceManager()
         self.sequence = []
         self.exp = exp
         self.logger = logging.getLogger('app')
+        self.logger.addHandler(logging.handlers.QueueHandler(logQ))
+        self.logger.setLevel(logging.DEBUG)
+        
         self.logger.info('Created an apparatus object')
 
     

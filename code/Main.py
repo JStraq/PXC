@@ -21,7 +21,6 @@ if __name__ == "__main__":
         
         logqueuehand = logging.handlers.QueueHandler(logQ)
         logfilehand = logging.FileHandler('C:/Data/PXCLogs/alog.log', mode='w')
-#        logfilehand = lh.LogHandler()
         logconhand = logging.StreamHandler()
         logfilehand.setLevel(logging.DEBUG)
         logqueuehand.setLevel(logging.DEBUG)
@@ -32,7 +31,6 @@ if __name__ == "__main__":
         logfilehand.setFormatter(recfmt)
         logconhand.setFormatter(confmt)
         
-        
 #        listener = logging.handlers.QueueListener(logQ, logfilehand)
         listener = lh.PXCLogger(logQ, (logfilehand, logconhand))
         listener.start()        
@@ -42,14 +40,15 @@ if __name__ == "__main__":
         logmeta = logging.getLogger('meta')
         logmeta.addHandler(logqueuehand)
         
-        logmeta.critical('Code Version %s' % exp.get_version())
+        logmeta.critical('PXC v%s' % exp.get_version())
+        #TODO: Package versions
+        #TODO: Date/time/computer
         logmeta.critical('Running on %d CPUs' % mp.cpu_count())
-        
-        
+                
        # START YOUR ENGINES
                 
         gui = eg.ExpGUI(exp, instReqQ, fileReqQ, logQ)  # Build the GUI        
         gui.startGUI()
 
-        listener.stop()       
+        listener.stop()
         logging.shutdown()
