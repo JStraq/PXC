@@ -1,13 +1,15 @@
 import Apparatus as ap
-import logging as lg
-
-modlogger = lg.getLogger('pxc_logs.IH')
+import logging
 
 def instHandler(*args):
-    exp, instReqQ, fileReqQ, appcopy = args
+    exp, instReqQ, fileReqQ, logQ, appcopy = args
     
-    logger = lg.getLogger('pxc_logs.IH2')
-    logger.setLevel(lg.DEBUG)
+    qh = logging.handlers.QueueHandler(logQ)
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(qh)
+    
+
     logger.info('Starting Instrument Process--------------------------------------------------------')
     
     print('inst_init')

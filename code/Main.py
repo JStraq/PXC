@@ -1,13 +1,14 @@
 import multiprocessing as mp
 import ExpController as ec
 import ExpGUI as eg
-import logging as lg
+import logging
 import os
 from datetime import datetime as dt
 import LogHandlers as lh
 import importlib
 import time
-importlib.reload(lg)
+import threading
+importlib.reload(logging)
 #from lib import Apparatus as ap
 
 if __name__ == "__main__":
@@ -16,44 +17,65 @@ if __name__ == "__main__":
     with ec.ExpManager() as manager:        # Generate a manager of this custom type
         instReqQ = manager.Queue()          # Set up queues for communicating between processes during runs
         fileReqQ = manager.Queue()
+        logQ = manager.Queue(-1)
                
         exp = manager.ExpController()       # Build a custom data storage object within the manager
         
-        if not os.path.exists(r'C:/Data/PXCLogs'):
-            os.makedirs(r'C:/Data/PXCLogs')
-        logpath = 'C:/Data/PXCLogs/PxcSession_{:s}.log'.format(dt.strftime(dt.now(),'%Y-%m-%d_%H-%M-%S'))
-        loghand = lh.LogHandler(logpath)
-        loghand.setLevel(lg.INFO)
-        formatter = lg.Formatter("%(levelname)s - %(name)s - %(message)s")
-        loghand.setFormatter(formatter)
         
-        logger = lg.getLogger('pxc_log')
-        logger.setLevel(lg.DEBUG)
-        logger.addHandler(loghand)
-       
-        logger.warning('start log')
-        for x in range(30):
-            logger.info('wait{:d}'.format(x))
-            time.sleep(0.03)
+        ####### SET UP LOGGING #######
+        d = {
+        'version': 1,
+        'disable_existing_loggers': True,
+        'formatters': {
+            'detailed': {
+                'class': 'logging.Formatter',
+                'format': '%(asctime)s %(name)-15s %(levelname)-8s %(processName)-10s %(message)s'
+            },
+            'simple': {
+                'class': 'logging.Formatter',
+                'format': '%(name)-15s %(levelname)-8s %(processName)-10s %(message)s'
+            }
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'level': 'INFO',
+            },
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': 'C:/Data/PXCLogs/alog.log',
+                'mode': 'w',
+                'formatter': 'detailed',
+                'level': 'DEBUG'
+            },
+        },
+        'loggers': {
+            'gui': {
+                'handlers': ['console']
+            },
+        },
+        'root': {
+            'level': 'DEBUG',
+            'handlers': ['file']
+        },
+    }          
         
+                    
+        logging.config.dictConfig(d)
+        listener = logging.handlers.QueueListener(logQ, lh.LogHandler())
+        listener.start()
+        
+        
+        ### GET THIS PARTY STARTED ###
         
         print('Code Version {:s}'.format(exp.get_version()))
         print('Running on {:d} CPUs'.format(mp.cpu_count()))
         
        # START YOUR ENGINES
-        gui = eg.ExpGUI(exp, instReqQ, fileReqQ)  # Build the GUI        
-        logger.warning('start gui')
+        gui = eg.ExpGUI(exp, instReqQ, fileReqQ, logQ)  # Build the GUI        
         gui.startGUI()
-        logger.warning('exit gui')
-        lg.shutdown()
 
+        mp.stop_event.wait()
+        listener.stop()
         
-        # app = ap.Apparatus(exp)
-        # app.findInstruments()
-        # app.instList[0].setName('TempThingy')
-        # ser = app.serialize()
-        #
-        # app2 = ap.Apparatus(exp)
-        # app2.deserialize(ser)
-        # print(app2.serialize())
-        # print(app2.instList[0].params)
+        logging.shutdown()

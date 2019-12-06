@@ -12,7 +12,7 @@ import HelperFunctions as hf
 import commands as sc
 import multiprocessing as mp
 import Apparatus as ap
-import logging as lg
+import logging
 
 matplotlib.use("TkAgg")
 import Plotter as plt
@@ -34,14 +34,14 @@ class ExpGUI:
             Queue for requesting data or action from the file process
     """
     
-    def __init__(self, exp, instReqQ, fileReqQ):
+    def __init__(self, exp, instReqQ, fileReqQ, logQ):
         """ Initialize the GUI by creating the necessary placeholder variables
         """
-        
-        self.logger = lg.getLogger('pxc_log.GUI')
+        self.logger = logging.getLogger('gui')
         self.exp = exp
         self.instReqQ = instReqQ
         self.fileReqQ = fileReqQ
+        self.logQ = logQ
         self.root = tk.Tk()
         self.insertType = None
         self.seqFileName = None
@@ -490,7 +490,7 @@ class ExpGUI:
                                                         
             # Set up the instrument communication process
             appcopy = self.app.serialize()
-            instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, appcopy])
+            instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, self.logQ, appcopy])
             instproc.name = '##\tinstHandler'
             instproc.start()
 
