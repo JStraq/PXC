@@ -2,9 +2,23 @@ import abc
 import numpy as np
 
 
-def formatHeader(inst, param, unit=None):  # take in strings, return standardized header
+def formatHeader(inst, param, unit=None):
     """
     Generalized function for how headers look in the datafile
+    
+    Parameters
+    ----------
+    inst : str
+        name of the instrument
+    param : str
+        name of the parameter
+    unit : str (optional)
+        unit of the parameter
+    
+    Returns
+    -------
+    text : str
+        A consistently formatted header string
     """
     text = "{:s}--{:s}".format(str(inst), str(param))
     if unit is not None:

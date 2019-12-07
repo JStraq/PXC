@@ -31,7 +31,6 @@ class SMeasCmd(sc.SeqCmd):
         ordered list of the parameters to be measured
     selInsts : list of Instrument
         ordered list of the instruments to be measured
-    subRows
     """
     cmdname = 'Single Measurement'
     def __init__(self, exp, app, pos, dup=False, gui=None):
@@ -137,8 +136,11 @@ class SMeasCmd(sc.SeqCmd):
 
         self.window = tk.Toplevel(self.gui.root)
         hf.centerWindow(self.window)
-        self.window.resizable(height=True, width=False)
-        self.window.geometry('400x20')
+        if not running:
+            self.window.resizable(height=False, width=False)
+            self.window.geometry('400x20')
+        else:
+            self.window.resizable(False, False)
         self.rowheight = 30
         self.window.grab_set()
         self.window.wm_title('Edit Single Measurement')
@@ -152,14 +154,14 @@ class SMeasCmd(sc.SeqCmd):
         self.instTraces = []
 
         state = tk.DISABLED if self.running else tk.NORMAL
-        self.addRow = tk.Button(self.window, text='...', command=self.createRow, width=50, state=state)
-        self.addRow.grid(column=1, columnspan=4, row=self.rows + 1, sticky='NSEW')
+        self.addRow = tk.Button(self.window, text='...', command=self.createRow, width=50, state=state,height=self.rowheight)
+        self.addRow.grid(column=1, columnspan=4, row=self.rows, sticky='NSEW')
         self.window.grid_columnconfigure(0, weight=0)        
         self.window.grid_columnconfigure(1, weight=1)
         self.window.grid_columnconfigure(2, weight=1)
         self.window.grid_columnconfigure(3, weight=1)
         self.window.grid_columnconfigure(4, weight=0)
-        self.window.grid_rowconfigure(0, weight=1)
+        self.window.grid_rowconfigure(0, weight=1, minsize=self.rowheight)
 
         for ii in range(self.rows):  # how many commands are added here? (default 0 for first edit)
            self.createRow(new=False)
@@ -185,9 +187,10 @@ class SMeasCmd(sc.SeqCmd):
             ii = int(self.rows)
             self.rows += 1
             self.window.minsize(400, self.rowheight*(self.rows+1))
-            self.window.grid_rowconfigure(self.rows, weight=1)
         else:
             ii = len(self.instBoxes)  # this is for regenerating the edit window when there's already data
+            self.window.minsize(400, self.rowheight*(self.rows+1))
+            
 
         self.selInstsVar.append(tk.StringVar())  # create variables to store the user's selections
         self.selParamsVar.append(tk.StringVar())
@@ -217,6 +220,8 @@ class SMeasCmd(sc.SeqCmd):
                 self.paramBoxes[ii].current(0)
         self.instBoxes[ii].grid(column=1, row=ii, sticky='NSEW')
         self.paramBoxes[ii].grid(column=2, row=ii, sticky='NSEW')
+        self.window.grid_rowconfigure(ii, weight=1, minsize=self.rowheight)
+        self.window.grid_rowconfigure(ii+1, weight=1, minsize=self.rowheight)
 
         if not self.running:
             self.instTraces.append(self.selInstsVar[ii].trace("w", lambda v, n, m, ii=ii: self.updateParams(v, n, m, ii)))
@@ -226,7 +231,7 @@ class SMeasCmd(sc.SeqCmd):
             self.subRows.append(tk.Button(self.window, text='X', activeforeground='red', command=lambda ii=ii: self.destroyRow(ii)))
             self.subRows[ii].grid(column=0, row=ii, sticky='NSEW')
             self.addRow = tk.Button(self.window, text='...', command=self.createRow, width=50)
-            self.addRow.grid(column=1, columnspan=4, row=ii + 1, sticky='NSEW')
+            self.addRow.grid(column=1, columnspan=4, row=ii+1, sticky='NSEW')
 
 
     def destroyRow(self, ii):
@@ -238,11 +243,9 @@ class SMeasCmd(sc.SeqCmd):
         ii : int
             The number of the row to be destroyed
         """
-        startHeight = self.window.winfo_height()
-        heightPerRow = int(startHeight/(self.rows+1))
         self.rows -= 1
         
-        self.window.geometry('400x{:d}'.format(int(startHeight-heightPerRow)))
+        self.window.geometry('400x{:d}'.format(self.rowheight*(self.rows+1)))
         self.window.minsize(400, self.rowheight*(self.rows+1))
 
         # clear the actual boxes and labels themselves
@@ -266,8 +269,8 @@ class SMeasCmd(sc.SeqCmd):
         self.addRow.destroy()
         self.addRow = tk.Button(self.window, text='...', command=self.createRow)
         self.addRow.grid(column=1, columnspan=3, row=self.rows, sticky='NSEW')
-        self.window.grid_rowconfigure(self.rows+1, weight=0)
-
+        for ii in range(self.rows):
+            self.window.grid_rowconfigure(ii, weight=1, minsize=self.rowheight)
 
     def getMeasHeaders(self):
         """

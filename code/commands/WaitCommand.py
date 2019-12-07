@@ -7,6 +7,48 @@ import time
 import HelperFunctions as hf
 
 class WaitCmd(sc.SeqCmd):
+    """
+    Sequence command which waits for a given amount of time or for a \
+    certain condition to be met.  The condition can be any continuous \
+    parameter of any active instrument.
+    
+    Parameters
+    ----------
+    exp : ExpController
+    app : Apparatus
+    pos : int
+        Numerical position in the sequence, starting from zero.
+    dup : boolean
+        Flag for whether or not to open the configuration window:\
+        for a brand new sequence command, we need to open it.  If \
+        we're just copying an old one, we don't.
+    gui : ExpGUI
+        A link to the GUI: this is set whenever the sequence is active, \
+        and equal to ``None`` if the command is being saved to a sequence file.
+    
+    Attributes
+    ----------
+    status : list of str
+        text to display on the GUI during the execution of this step
+    timeout : float
+        number of seconds to wait, even if a condition has not been met,\
+        the command will not wait longer than this parameter specifies.
+    conditionInst : str
+        name of the instrument to be polled for the termination condition
+    conditionParam : str
+        name of the parameter to be polled for the termination condition
+    conditionVal : float
+        terminate once the parameter reaches this value
+    stableTime : float
+        Force the parameter to be within +/- the stability for this many seconds
+    stability : float
+        maximum deviation from ``conditionVal`` for it still to be \
+        considered stable
+    pollTime : float
+        how often (in seconds) to check the condition parameter
+    mode : str
+        Either ``'Time'`` or ``'Condition'``, describing the termination.
+    """
     cmdname='Wait'
     def __init__(self, exp, app, pos, dup=False, gui=None):
         sc.SeqCmd.__init__(self, exp=exp, app=app, pos=pos, dup=dup, gui=gui)
@@ -26,14 +68,28 @@ class WaitCmd(sc.SeqCmd):
         if not dup:
            self.edit()
 
+
     def edit(self, running=False):
+        """
+        Open a ``tk.TopLevel`` dialog to edit the settings of this command
+        
+        Parameters
+        ----------
+        running : bool (optional)
+            Whether or not the sequence is actively running: dictates\
+            if the window will actually allow edits or be just for show.
+        """
+        
         self.running = running
         self.window = tk.Toplevel(self.gui.root)
+        hf.centerWindow(self.window)
         self.window.grab_set()
         self.window.wm_title('Edit Wait Command')
         self.window.attributes("-topmost", True)
         self.window.protocol("WM_DELETE_WINDOW",
                             self.accept)  # if they delete the window, assume they liked their settings
+        self.window.resizable(False, False)
+        self.window.geometry('400x60')
 
         self.instruments = []
         for inst in self.app.instList:
@@ -69,7 +125,7 @@ class WaitCmd(sc.SeqCmd):
 
         state = tk.DISABLED if self.running else tk.NORMAL
         tk.Label(self.window, text='Wait for:').grid(column=0, row=0, sticky='NSE', padx=5)
-        self.modeBox = ttk.Combobox(self.window, textvariable=self.modeVar, width=25, state=state)
+        self.modeBox = ttk.Combobox(self.window, textvariable=self.modeVar, width=30, state=state)
         self.modeBox['values'] = ['Time', 'Condition']
         if self.mode not in self.modeBox['values']:
            self.modeBox.current(0)
@@ -79,10 +135,13 @@ class WaitCmd(sc.SeqCmd):
         self.modeTrace = self.modeVar.trace("w", self.updateMode)
 
         self.updateMode()
-        hf.centerWindow(self.window)
         self.gui.root.wait_window(self.window)
 
+
     def updateMode(self, *args):
+        """
+        Rebuild the GUI whenever the termination condition is changed.
+        """
         state = tk.DISABLED if self.running else tk.NORMAL
         if not self.running:
             if self.unitTrace is not None:
@@ -93,6 +152,7 @@ class WaitCmd(sc.SeqCmd):
                 self.instTrace = None
 
         if self.modeVar.get() == 'Time':  # switched to time, destroy other boxes
+            self.window.geometry('300x50')
             for label in self.labels:  # destroy existing labels
                if label is not None:
                    label.destroy()
@@ -109,10 +169,11 @@ class WaitCmd(sc.SeqCmd):
                unit = None
             self.labels[0] = tk.Label(self.window, text='Time (s):')  # put in new label
             self.labels[0].grid(column=0, row=1, sticky='NSEW', padx=5)
-            self.boxes[0] = tk.Entry(self.window, textvariable=self.timeoutVar, width=50, state=state)  # put in new box
+            self.boxes[0] = tk.Entry(self.window, textvariable=self.timeoutVar, width=30, state=state)  # put in new box
             self.boxes[0].grid(column=1, row=1, sticky='NSEW', padx=5)
 
         else:  # mode = 'Condition
+            self.window.geometry('550x150')
             if self.labels[0] is not None:
                self.labels[0].destroy()
             self.labels[0] = tk.Label(self.window, text='Condition:')  # change first label to proper value
@@ -163,19 +224,29 @@ class WaitCmd(sc.SeqCmd):
             self.updateUnits()
 
     def updateParams(self, *args):
-       inst = self.instruments[self.stringInsts.index(self.conditionInstVar.get())]
-       paramStrings = [str(param) for param in inst.getQCSParams()]
-       self.paramBox['values'] = paramStrings[:]
-       self.paramBox.current(0)
+        """
+        If the condition instrument is changed, update the param options.
+        """
+        inst = self.instruments[self.stringInsts.index(self.conditionInstVar.get())]
+        paramStrings = [str(param) for param in inst.getQCSParams()]
+        self.paramBox['values'] = paramStrings[:]
+        self.paramBox.current(0)
 
     def updateUnits(self, *args):
-       inst = self.instruments[self.stringInsts.index(self.conditionInstVar.get())]
-       param = inst.getParam(self.conditionParamVar.get())
-       units = param.units
-       for ii in range(2):
-           self.units[ii]['text'] = units
+        """
+        If the condition param is changed, update the units.
+        """
+        inst = self.instruments[self.stringInsts.index(self.conditionInstVar.get())]
+        param = inst.getParam(self.conditionParamVar.get())
+        units = param.units
+        for ii in range(2):
+            self.units[ii]['text'] = units
 
     def accept(self):
+        """
+        Save the settings from the GUI and push them to the apparatus.
+        Then destroy the window.
+        """
         self.modeVar.trace_vdelete("w", self.modeTrace)
         self.modeTrace = None
         if self.unitTrace is not None:
@@ -214,14 +285,29 @@ class WaitCmd(sc.SeqCmd):
         self.conditionVar = None
         self.units = []
 
+
     def updateTitle(self):
+        """
+        Update the title to reflect the command's behavior
+        """
         if self.mode == 'Time':
            self.title = 'Wait for {:d}s'.format(int(self.timeout))
         else:
            self.title = 'Wait for {:s} = {:.3f} +/- {:.3f}'.format(str(self.conditionParam), self.conditionVal, self.stability)
         self.title = hf.enumSequence(self.pos, self.title)
 
+
     def execute(self, fileReqQ):
+        """
+        Run this sequence command and wait for the specified condition.
+        
+        Parameters
+        ----------
+        fileReqQ : multiprocessing.Queue
+            the queue for sending data to the file: only really needed if\
+            the termination is conditioned on a parameter, in which case \
+            the interrogated parameter is saved to the file.
+        """
         self.stringInsts = [str(x) for x in self.instruments]
         iteration = 0
         starttime = datetime.today()
@@ -257,14 +343,24 @@ class WaitCmd(sc.SeqCmd):
                     iteration += 1
                     if abs(max(stableData) - target) < stability and abs(min(stableData) - target) < stability:
                         break
-                else:
-                    if timeout is not 0:
-                        self.status[2] = 'Timeout:  \t{:.0f} s/{:.0f} s'.format(timeElapsed, self.timeout)
+
+                if timeout is not 0:
+                    self.status[2] = 'Timeout:  \t{:.0f} s/{:.0f} s'.format(timeElapsed, self.timeout)
                 if self.exp.isAborted():
                     break
                 self.exp.setStatus(self.status)
 
+
     def getMeasHeaders(self):
+        """
+        Look through the list of parameters and instruments to be measured,
+        and come up with a list of all the headers required in the datafile.
+        
+        Returns
+        -------
+        headers : list of str
+            The required headers, in the order the user described them.
+        """
         headers = []
         if self.mode == 'Condition':
             inst = self.instruments[self.stringInsts.index(self.conditionInst)]
