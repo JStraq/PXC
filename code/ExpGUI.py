@@ -207,13 +207,13 @@ class ExpGUI:
     def startGUI(self):
         """ Starts the loop which handles all GUI input and output
         """
-        print('gui_init')
+        self.logger.info('GUI init')
         tk.mainloop()  # This is where the GUI itself runs: the mainloop handles all events
         
         self.logger.info('GUI exit')
         self.exp.kill() # once the GUI closes, trigger destruction of other processes
         self.app.rm.close()
-        self.logger.info('Close apparatus pyvisa resourcemanager')
+        self.logger.info('Close gui pyvisa.resourcemanager')
         
         return None
         

@@ -5,10 +5,9 @@ This section covers the everyday use of PXC, from the experiment setup to the fi
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
    
    usage/install
    usage/measure
    usage/sequence
    usage/plot
-   usage/analyze
+   usage/outputs

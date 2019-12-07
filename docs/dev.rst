@@ -5,9 +5,9 @@ PXC was written with the intention of being modular and adaptable.  The followin
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
    
    dev/overview
    dev/arch
    dev/commands
    dev/instruments
+   dev/logging

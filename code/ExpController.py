@@ -64,7 +64,8 @@ class ExpController:
     sequence
     logvars
     monitors
-    xdata
+    xdata : list
+        The 
     ydat
     xparm
     yparam
@@ -81,10 +82,6 @@ class ExpController:
         self.manager = mp.Manager()
         self.q = self.manager.Queue()
         self.filepath = ''
-
-#        print(self.logpath)
-#        print(self.log)
-#        
 
         self.killFlag = False    # for exiting the entire program
         self.abortFlag = False   # for stopping a sequence
@@ -117,8 +114,6 @@ class ExpController:
         self.filename = ''
         
         
-
-
     def isFileOpen(self):
         return self.fileOpen
 
@@ -132,14 +127,17 @@ class ExpController:
         return self.logpath
 
     def get_availInsts(self):
-        
         return self.availInsts
+        
     def set_availInsts(self, new):
         self.availInsts = new
+        
     def get_activeInsts(self):
         return self.activeInsts
+        
     def set_activeInsts(self, new):
         self.activeInsts = new
+        
     def get_allInsts(self):
         return self.availInsts + self.activeInsts
     
