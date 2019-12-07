@@ -19,7 +19,7 @@ class PXCLogger(logging.handlers.QueueListener):
         logging.handlers.QueueListener.__init__(self, logQ, handlers)
         self.filehand = self.handlers[0][0]
         self.conhand = self.handlers[0][1]
-        self.recfmt = logging.Formatter('%(asctime)s\t %(name)-8s %(levelname)-8s %(processName)-8s %(message)s')
+        self.recfmt = logging.Formatter('%(asctime)s\t %(name)-8s %(levelname)-8s %(processName)-10s %(message)s')
         self.metafmt = logging.Formatter('#####\t\t%(message)s')
         
         self.filehand.setFormatter(self.recfmt)
@@ -37,10 +37,13 @@ class PXCLogger(logging.handlers.QueueListener):
             for all logger sources except for the one called ``'meta'``,\
             which uses a simpler format which looks more like a tag.
         """
-        if record.name == 'meta':
-            self.filehand.setFormatter(self.metafmt)
-            self.filehand.handle(record)
-            self.filehand.setFormatter(self.recfmt)
-        else:
-            self.filehand.handle(record)
-        self.conhand.handle(record)
+        if record.levelno >= self.filehand.level:
+            if record.name == 'meta':
+                self.filehand.setFormatter(self.metafmt)
+                self.filehand.handle(record)
+                self.filehand.setFormatter(self.recfmt)
+            else:
+                self.filehand.handle(record)
+        
+        if record.levelno >= self.conhand.level:
+            self.conhand.handle(record)

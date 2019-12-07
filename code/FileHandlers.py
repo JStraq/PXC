@@ -14,8 +14,7 @@ def fileHandler(args):
     
     logger.info('Starting File Process')
     
-    
-    dbase = DataBase()
+    dbase = DataBase(logQ)
     
     while not exp.get_killFlag():
         if not fileReqQ.empty():
@@ -35,18 +34,47 @@ def fileHandler(args):
                 logger.info(e)
             fileReqQ.task_done()
 
+    logger.info('file writing is finished')
     if dbase is not None:
         dbase.closefile()  # don't do drugs, close your files, stay in school
-    print('kill_files')
+        logger.info('closed the data file')
 
 
 
 class fileRequest:
+    """
+    Class for mediating requests from other processes to the file process\
+    by sending not just string instructions but also measurement or \
+    configuration data.
+    
+    Parameters
+    ----------
+    reqtype : str
+        A human-readable name describing the requested action
+    args : tuple
+        Extra instructions, parameters, or data as required for the reqtype.
+    
+    """
+
     def __init__(self, reqtype, args=None):
         self.type = reqtype
         self.args = args
 
+
     def execute(self, dbase):
+        """
+        Do whatever is required of this type of request.
+        
+        Parameters
+        ----------
+        dbase : DataBase
+            The file controller        
+        
+        Returns
+        -------
+        Varies by type, see source code.
+        
+        """
         if self.type == 'New File':
             (filepath, headers) = self.args
             dbase.startfile(filepath, headers)
@@ -128,14 +156,60 @@ class fileRequest:
 
 
 class DataBase:
-    def __init__(self):
+    """
+    Class for controlling and tracking data flow into and out of datafiles.
+    No more than one file can be opened at a time.
+    
+    Parameters
+    ----------
+    logQ : multprocessing.Queue
+        Queue for logging events
+    
+    Attributes
+    ----------
+    filepath : str
+        path of the current file
+    headers : list of str
+        All of the column headers in the file
+    file : file
+        file handle for the data file itself
+    unread : list of dict
+        records appended to the file since the last time the GUI requested\
+        more data: this local storage prevents needing to search the file\
+        every time
+    logger : logging.Logger
+        object which pushes event logs to logQ
+    """
+    
+    
+    def __init__(self, logQ):
         self.filepath = None
         self.headers = None
         self.file = None
         self.unread = []
         self.latest = {}
+                
+        qh = logging.handlers.QueueHandler(logQ)
+        self.logger = logging.getLogger('database')
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(qh)
+
 
     def openfile(self, filepath):
+        """
+        Access an existing data file. If a file is currently open, this will close it\
+        first before opening the new one.
+        
+        Parameters
+        ----------
+        filepath : str
+            file to be opened
+            
+        Returns
+        -------
+        self.headers : list of str
+            The names of the columns in this file.
+        """
         self.unread = []
         if self.file is not None:
             self.file.close()
@@ -143,9 +217,21 @@ class DataBase:
         self.file = open(self.filepath, 'a+')
         self.file.seek(0, 0)
         self.headers = self.file.readline().strip().split('\t')
+        self.logger.critical('opened an existing file: {:s}'.format(self.filepath))
         return self.headers
 
+
     def startfile(self, filepath, headers):
+        """
+        Create a new datafile and open it for access.
+        
+        Parameters
+        ----------
+        filepath : str
+            The file to be opened
+        headers : list of str
+            The column headers 
+        """
         self.unread = []
         self.closefile()
         self.filepath = filepath
@@ -155,8 +241,21 @@ class DataBase:
         self.headers = headers
 
         self.file.write('\t'.join(self.headers) + '\n')
+        self.logger.critical('created a new file: {:s}'.format(self.filepath))
 
     def writeline(self, record):
+        """
+        Add a single data line to the file.
+        
+        Parameters
+        ----------
+        record : dict
+            The headers and values to append to the file.\
+            If record.keys() doesn't cover all of the headers for the \
+            current file, then a dash ``'-'`` is written to the omitted\
+            columns.
+            
+        """
         self.unread.append(record)
         for key in record.keys():
             self.latest[key] = record[key]
@@ -170,16 +269,32 @@ class DataBase:
         self.file.flush()  # push the changes to disk
 
     def closefile(self):
+        """
+        Terminate the connection to the file which is presently open.
+        """
         self.unread = []
         if self.file is not None:
             self.file.close()
         self.file = None
+        self.logger.critical('closed a file'.format(self.filepath))
 
     def readUnread(self):
+        """
+        Grab all of the records taken since the last read, then clears the\
+        list of unread records.
+        
+        Returns
+        -------
+        unread : list of dict
+            All unread records
+        """
         unread = self.unread[:]
         self.unread = []
         return unread
 
     def clearUnread(self):
+        """
+        Clears the unread record buffer.
+        """
         self.unread = []
     

@@ -376,7 +376,6 @@ class ExpGUI:
         top.destroy()
 
     def updateStatus(self):
-        self.logger.info('Updating main GUI status indicator')
         es = self.exp.getStatus()
         for ii in range(len(self.status)):
             self.status[ii]['text'] = es[ii]
@@ -508,7 +507,10 @@ class ExpGUI:
             self.framePlt.clearPlots()
 
             self.monHeaders = self.app.getVarsList()
+            
+            self.logger.critical('sequence headers: {:s}'.format('\t'.join(self.monHeaders)))
             if len(self.monHeaders)>1:
+                self.logger.critical('requested creation of new file {:s}'.format(filename))
                 self.fileReqQ.put(fh.fileRequest('New File', args=(filename, self.monHeaders)))
                 self.framePlt.availQuants = self.monHeaders
             self.instReqQ.put(ih.instRequest('Run Sequence', args=()))  # starts running the commands to GPIB
@@ -533,7 +535,6 @@ class ExpGUI:
             f.write(self.app.serialize().replace('COMMANDS:', '\nCOMMANDS:'))
 
     def sequenceWatcher(self):
-        self.logger.info('Checking on run')
         if not self.exp.isRunning():
             self.logger.info('Run detected as complete')
             self.runSeqButton['state'] = 'normal'

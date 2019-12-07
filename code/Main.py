@@ -34,14 +34,9 @@ if __name__ == "__main__":
         logpath = 'C:/Data/PXCLogs/PxcSession_{:s}.log'.format(dt.strftime(dt.now(),'%Y-%m-%d_%H-%M-%S'))
         logfilehand = logging.FileHandler(logpath, mode='w+')
         logconhand = logging.StreamHandler()
-        logfilehand.setLevel(logging.DEBUG)
         logqueuehand.setLevel(logging.DEBUG)
-        logconhand.setLevel(logging.WARNING)
-        recfmt = logging.Formatter('%(asctime)s\t %(name)-8s %(levelname)-8s %(processName)-8s %(message)s')
-        metafmt = logging.Formatter('%####\t%(message)-50s####')
-        confmt = logging.Formatter('%(message)s')
-        logfilehand.setFormatter(recfmt)
-        logconhand.setFormatter(confmt)
+        logfilehand.setLevel(logging.DEBUG)       
+        logconhand.setLevel(logging.INFO)
         
         listener = lh.PXCLogger(logQ, (logfilehand, logconhand))
         listener.start()        
@@ -50,6 +45,7 @@ if __name__ == "__main__":
         logroot.addHandler(logqueuehand)
         logmeta = logging.getLogger('meta')
         logmeta.addHandler(logqueuehand)
+        logmeta.setLevel(logging.DEBUG)
         
         logmeta.critical('Python Experiment Controller Code')        
         logmeta.critical('Written by J.A.W. Straquadine')
@@ -68,6 +64,9 @@ if __name__ == "__main__":
         logmeta.critical('*\tProcessor:\t%s' % platform.processor())
         logmeta.critical('*\tCores:\t%d' % mp.cpu_count())
         logmeta.critical('')
+        logmeta.debug('='*80)
+        logmeta.debug('TIMESTAMP    LOGGER   LEVEL    PROCESS    MESSAGE')
+        logmeta.debug('_'*80)
                 
        # START YOUR ENGINES
                 

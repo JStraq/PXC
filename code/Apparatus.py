@@ -346,6 +346,8 @@ class Apparatus:
             write processes running in parallel.  This is passed through to
             the `command.execute()` function.
         """
+        
+        self.logger.info('STARTING A SEQUENCE')
         position = 0
         seqLength = len(self.sequence)
         while not self.exp.isAborted():
@@ -355,19 +357,26 @@ class Apparatus:
                     if isinstance(cmd, sc.LoopEnd):
                         self.exp.instAns = cmd.status
                         newPosition = cmd.execute(fileReqQ)
-                        position = newPosition if (newPosition is not None) else (position + 1)
+                        if (newPosition is not None):
+                            position = newPosition
+                            self.logger.debug('returning to beginning of loop {:d}: {:s}'.format(position, self.sequence[position].title))
+                        else:
+                            position = position + 1
+                            self.logger.debug('finished loop')
                     else:
                         self.exp.instAns = cmd.status
+                        self.logger.debug('executing sequence step {:d}: {:s}'.format(position, cmd.title))
                         cmd.execute(fileReqQ)
                         position += 1
                 else:
+                    self.logger.debug('sequence step {:d}: {:s} disabled, skipping...'.format(position, cmd.title))
                     position += 1
+            self.logger.info('reached end of sequence')
             self.exp.abort()
 
         self.exp.finish()
-
-        print('done!')
-        self.logger.info('Sequence Finished!')
+        
+        self.logger.critical('Sequence Finished!')
 
 
     def deleteSteps(self, indices):
