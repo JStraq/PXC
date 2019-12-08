@@ -8,14 +8,59 @@ import HelperFunctions as hf
 import numpy as np
 
 
-class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
+class CMeasCmd(sc.SeqCmd):
+    """
+    Repeatedly measure an arbitrary list of parameters.
+    This will measure for a certain amount of time or until a condition
+    is met, similar to the Wait command.
+    
+    Parameters
+    ----------
+    exp : ExpController
+        Data/communication manager for the entire setup
+    app : Apparatus
+        The object storing the sequence of which this command will be part
+    pos : int
+        Numerical position in the sequence, starting from zero.
+    dup : boolean
+        Flag for whether or not to open the configuration window:\
+        for a brand new sequence command, we need to open it.  If \
+        we're just copying an old one, we don't.
+    gui : ExpGUI
+        A link to the GUI: this is set whenever the sequence is active, \
+        and equal to ``None`` if the command is being saved to a `*.seq`.
+        
+    Attributes
+    ----------
+    status : list of str
+        text to display on the GUI during the execution of this step
+    timeout : float
+        number of seconds to wait, even if a condition has not been met,\
+        the command will not wait longer than this parameter specifies.
+    conditionInst : str
+        name of the instrument to be polled for the termination condition
+    conditionParam : str
+        name of the parameter to be polled for the termination condition
+    conditionVal : float
+        terminate once the parameter reaches this value
+    stableTime : float
+        Force the parameter to be within +/- the stability for this many seconds
+    stability : float
+        maximum deviation from ``conditionVal`` for it still to be \
+        considered stable
+    pollTime : float
+        how often (in seconds) to check the condition parameter
+    mode : str
+        Either ``'Time'`` or ``'Condition'``, describing the termination.
+        
+    """
     cmdname = 'Continuous Measurement'
     def __init__(self, exp, app, pos, dup=False, gui=None):
         sc.SeqCmd.__init__(self, exp=exp, app=app, pos=pos, dup=dup, gui=gui)
         self.status = self.status = ['Status: \tMeasuring', 'Condition:\t', 'Parameter:\t']
         self.type = 'ContinuousMeasurementCommand'
         self.rows = 0
-
+        self.rowheight = 30
         self.wait = 'Time'  # wait for 'Time' or 'Condition'
         self.timeout = 10.0  # how long to wait for each set before proceeding
         self.waitInst = ''
@@ -41,18 +86,27 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
             self.edit()
 
     def edit(self, running=False):
+        """
+        Launch GUI to edit parameters
+        
+        Parameters
+        ----------
+        running : boolean
+            Parameters will only be editable if we're not running a sequence
+        """
         self.running = running
         self.rows = int(self.rows)
         self.labels = [None for x in range(4)]
         self.boxes = [None for x in range(4)]
         self.units = [None for x in range(4)]
         self.waitTrace = None
-        self.paramTrace = None
+        self.waitParamTrace = None
         state = tk.DISABLED if self.running else tk.NORMAL
         
         self.updateInstList()
 
         self.window = tk.Toplevel()
+        self.window.resizable(height=False, width=False)
         self.window.grab_set()
         self.window.wm_title('Edit Continuous Measurement')
         self.window.attributes("-topmost", True)
@@ -105,11 +159,38 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
 
         for ii in range(self.rows):  # how many commands are added here? (default 0 for first edit)
             self.createRow(new=False)
+            
+        self.updateSize()
 
         hf.centerWindow(self.window)
         self.gui.root.wait_window(self.window)
 
+    
+    def updateSize(self):
+        """
+        Make sure the edit dialog is large enough to accommodate its content
+        """
+        print('UPDATESIZE')
+        rowpx = self.rowheight*(self.rows+1)
+        condpx = self.rowheight*3 if self.waitVar.get() == 'Time' else self.rowheight*7
+        height = max((rowpx,condpx))
+        print(rowpx,condpx,height)
+        width = 550 if self.waitVar.get() == 'Time' else 830
+        self.window.geometry('{:d}x{:d}'.format(width,height))
+        for ii in range(max(7, self.rows+1)):
+            self.window.grid_rowconfigure(ii, weight=0, minsize=self.rowheight)
+
+
     def createRow(self, new=True):
+        """
+        Add a new parameter to measure
+        
+        Parameters
+        ----------
+        new : boolean
+            If new, initialize with the first inst/param combo.\
+            Otherwise, use whatever value was set last time.
+        """
         state = tk.DISABLED if self.running else tk.NORMAL
         if new:
             ii = int(self.rows)
@@ -122,7 +203,8 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
         self.selParamsVar.append(tk.StringVar())
 
         # generate the box for this row
-        self.instBoxes.append(ttk.Combobox(self.window, textvariable=self.selInstsVar[ii], width=25, state=state))
+        self.instBoxes.append(ttk.Combobox(self.window, textvariable=self.selInstsVar[ii], 
+                                           width=25, state=state, height=self.rowheight))
         self.instBoxes[ii]['values'] = self.stringInsts[:]
         if new:
             self.instBoxes[ii].current(0)
@@ -131,13 +213,14 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                 self.instBoxes[ii].current(self.stringInsts.index(self.selInsts[ii]))
             except ValueError:
                 self.instBoxes[ii].current(0)
-        self.instBoxes[ii].grid(column=6, row=ii)
+        self.instBoxes[ii].grid(column=6, row=ii, sticky='NSEW')
         inst = self.instruments[self.stringInsts.index(self.selInstsVar[ii].get())]
 
         if not self.running:
             self.instTraces.append(self.selInstsVar[ii].trace("w", lambda v, n, m, ii=ii: self.updateParams(v, n, m, ii)))
 
-        self.paramBoxes.append(ttk.Combobox(self.window, textvariable=self.selParamsVar[ii], width=25, state=state))
+        self.paramBoxes.append(ttk.Combobox(self.window, textvariable=self.selParamsVar[ii],
+                                            width=25, state=state, height=self.rowheight))
         stringParams = [str(pm) for pm in inst.getQParams()]
         self.paramBoxes[ii]['values'] = stringParams[:]
         if new:
@@ -147,16 +230,28 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                 self.paramBoxes[ii].current(stringParams.index(self.selParams[ii]))
             except ValueError:
                 self.paramBoxes[ii].current(0)
-        self.paramBoxes[ii].grid(column=7, row=ii)
+        self.paramBoxes[ii].grid(column=7, row=ii, sticky='NSEW')
 
         # move and rebuild the control buttons
         if not self.running:
-            self.subRows.append(tk.Button(self.window, text='X', activeforeground='red', command=lambda ii=ii: self.destroyRow(ii)))
-            self.subRows[ii].grid(column=5, row=ii)
+            self.subRows.append(tk.Button(self.window, text='X', activeforeground='red',
+                                          command=lambda ii=ii: self.destroyRow(ii), height=1))
+            self.subRows[ii].grid(column=5, row=ii, sticky='NSEW')
             self.addRow.grid_forget()
             self.addRow.grid(column=5, columnspan=3, row=ii + 1, sticky='NSEW')
+        
+        self.updateSize()
 
-    def destroyRow(self, ii):  # hitting the little 'X' button to the left removes that row and all its data.
+
+    def destroyRow(self, ii):
+        """
+        hitting the little 'X' button to the left removes that row and all its data.
+        
+        Parameters
+        ----------
+        ii : int
+            row number to delete
+        """
         self.rows -= 1
 
         # clear the actual boxes and labels themselves
@@ -179,8 +274,13 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
 
         self.addRow.grid_forget()
         self.addRow.grid(column=5, columnspan=4, row=self.rows, sticky='NSEW')
+        self.updateSize()
+
 
     def updateUnits(self, *args):
+        """
+        Make sure the units update when the parameters are updated.
+        """
         if self.waitVar.get() == 'Condition':
             inst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
             param = inst.getParam(self.waitParamVar.get())
@@ -190,9 +290,17 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
 
         self.updateValues()
 
+
     def updateWait(self, *args):
+        """
+        Change the structure of the wait half of the GUI
+        """
+        print('UPDATEWAIT: {:s}'.format(self.waitVar.get()))
+        self.updateSize()
         if self.waitVar.get() == 'Time':
+            print('a')
             for ii in range(len(self.labels)):
+                print('b')
                 if self.labels[ii] is not None:
                     self.labels[ii].destroy()
                     self.labels[ii] = None
@@ -202,45 +310,70 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                 if self.units[ii] is not None:
                     self.units[ii].destroy()
                     self.units[ii] = None
-            if self.paramTrace is not None:
-                self.waitParamVar.trace_vdelete("w", self.paramTrace)
-                self.paramTrace = None
+            if self.waitParamTrace is not None:
+                print('c')
+                self.waitParamVar.trace_vdelete("w", self.waitParamTrace)
+                self.waitParamTrace = None
+            if self.waitInstTrace is not None:
+                print('asdf')
+                self.waitInstVar.trace_vdelete("w", self.waitInstTrace)
+                self.waitInstTrace = None
             if self.waitParamBox is not None:
+                print('d')
                 self.waitParamBox.destroy()
                 self.waitParamBox = None
+            print('y')
 
-        else:  # mode = 'Condition
+        else:  # mode = 'Condition'
+            print('e')
             for ii in range(len(self.labels)):
+                print('f')
                 if self.labels[ii] is not None:
+                    print('g')
                     self.labels[ii].destroy()
                     self.labels[ii] = None
                 if self.boxes[ii] is not None:
+                    print('h')
                     self.boxes[ii].destroy()
                     self.boxes[ii] = None
                 if self.units[ii] is not None:
+                    print('i')
                     self.units[ii].destroy()
                     self.units[ii] = None
+            print('z')
 
             self.labels[0] = tk.Label(self.window, text='Condition:')  # change first label to proper value
             self.labels[1] = tk.Label(self.window, text='Value:')
             self.labels[2] = tk.Label(self.window, text='Stability Window: +/-')
             self.labels[3] = tk.Label(self.window, text='Stable Time:')
 
+            print('j')
             state = tk.DISABLED if self.running else tk.NORMAL
             self.boxes[0] = ttk.Combobox(self.window, textvariable=self.waitInstVar, width=20, state=state)
             self.boxes[0]['values'] = self.stringInsts[:]
+            print('k')
             try:
                 self.boxes[0].current(self.stringInsts.index(self.waitInst))
+                print('l')
             except ValueError:
+                print('m') #*
+                print(self.boxes)
+                print(self.boxes[0])
+                print(self.boxes[0]['values'])
+                print(self.stringInsts)
+                print(self.boxes[0].current(0))
                 self.boxes[0].current(0)
+                print('not dead')
 
             waitInst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
             self.waitParamBox = ttk.Combobox(self.window, textvariable=self.waitParamVar, width=20, state=state)
             self.waitParamBox['values'] = [str(pm) for pm in waitInst.getQCSParams()]
             try:
                 self.waitParamBox.current([str(pm) for pm in waitInst.getQCSParams()].index(self.waitParam))
+                print('n') #*
             except ValueError:
                 self.waitParamBox.current(0)
+                print('o')
 
             self.boxes[1] = tk.Entry(self.window, textvariable=self.targetVar, state=state)
             self.boxes[2] = tk.Entry(self.window, textvariable=self.stabilityVar, state=state)
@@ -254,21 +387,30 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
             self.units[2] = tk.Label(self.window, text='s')
 
             for ii in range(len(self.labels)):
+                print('p')
                 self.labels[ii].grid(column=0, row=3 + ii, sticky='NSE', padx=5)
                 if ii is not 0:
+                    print('q')
                     self.boxes[ii].grid(column=1, row=3 + ii, sticky='NSEW', padx=5, columnspan=2)
                     self.boxes[ii].bind('<FocusOut>', self.updateValues)
                     self.units[ii - 1].grid(column=3, row=3 + ii, sticky='NSW', padx=5)
 
             self.boxes[0].grid(column=1, row=3, sticky='NSEW', padx=5)
             self.waitParamBox.grid(column=2, row=3, sticky='NSEW', padx=5)
+            print('r')
             if not self.running:
-                self.paramTrace = self.waitParamVar.trace("w", self.updateUnits)
+                self.waitParamTrace = self.waitParamVar.trace("w", self.updateUnits)
                 self.waitInstTrace = self.waitInstVar.trace("w", self.updateWaitParams)
+                print('s')
 
         self.updateValues()
+        
+
 
     def updateValues(self, *args):
+        """
+        Make sure the values are kosher with the parameter
+        """
         if self.waitVar.get() == 'Condition':
             inst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
             param = inst.getParam(self.waitParamVar.get())
@@ -285,13 +427,17 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
 
         self.pollTimeVar.set(max(0.1, self.pollTimeVar.get()))
 
+
     def accept(self):
+        """
+        Push all of the parameters to the sequence, then close the window.
+        """
         self.updateValues()
 
         if not self.running:
-            if self.paramTrace is not None:
-                self.waitParamVar.trace_vdelete("w", self.paramTrace)
-                self.paramTrace = None
+            if self.waitParamTrace is not None:
+                self.waitParamVar.trace_vdelete("w", self.waitParamTrace)
+                self.waitParamTrace = None
             self.waitVar.trace_vdelete("w", self.waitTrace)
             if self.waitInstTrace is not None:
                 self.waitInstVar.trace_vdelete("w", self.waitInstTrace)
@@ -339,7 +485,11 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
         self.selParamsVar = []
         self.subRows = []
 
+
     def updateTitle(self):
+        """
+        Make the title match the contents
+        """
         if self.wait == 'Time':
             if self.timeout == 0:
                 self.title = 'Monitor indefinitely'
@@ -349,7 +499,16 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
             self.title = 'Monitor until {:s} is {:.2f}'.format(self.waitParam, self.target)
         self.title = hf.enumSequence(self.pos, self.title)
 
+
     def execute(self, fileReqQ):
+        """
+        Actually run the sequence
+        
+        Parameters
+        ----------
+        fileReqQ : multiprocessing.Queue
+            Queue for sending data to the file
+        """
         self.stringInsts = [str(x) for x in self.instruments]
         if not self.exp.isAborted():
             waitIter = 0
@@ -392,7 +551,7 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                     waitVal = record[sc.formatHeader(inst, param, param.units)]
                     stableData[waitIter % datapoints] = float(waitVal)
                     self.status[1] = 'Condition:  \t{:s} = {:.0f} +/- {:.1f}, {:.0f} s'.format(
-                        param, self.target, self.stability, self.stableTime)
+                        param.name, self.target, self.stability, self.stableTime)
                     waitIter += 1
                     if abs(max(stableData) - self.target) < self.stability \
                             and abs(min(stableData) - self.target) < self.stability:
@@ -404,6 +563,7 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
                 self.exp.setStatus(self.status)
                 if self.exp.isAborted():
                     break
+
 
     def getMeasHeaders(self):
         """
@@ -449,13 +609,31 @@ class CMeasCmd(sc.SeqCmd):  # Repeatedly measures a list of parameters
 
         return headers
 
+
     def updateParams(self, v, n, m, ii):
+        """
+        make sure the parameters match the instruments
+        
+        Parameters
+        ----------
+        ii : int
+            row number to update
+        """
         inst = self.instruments[self.stringInsts.index(self.selInstsVar[ii].get())]
         params = inst.getQParams()
         self.paramBoxes[ii]['values'] = params[:]
         self.paramBoxes[ii].current(0)
 
+
     def updateWaitParams(self, *args):
+        """
+        make sure the parameters match the wait instrument
+        
+        Parameters
+        ----------
+        ii : int
+            row number to update
+        """
         inst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
         params = [str(pm) for pm in inst.getQCSParams()]
         self.waitParamBox['values'] = params[:]

@@ -558,7 +558,7 @@ class ExpGUI:
             self.updateStatus()
 
             self.updatePlot()
-            self.root.after(1000, self.sequenceWatcher)  # update the gui every 1000 ms
+            self.root.after(500, self.sequenceWatcher)  # update the gui every 500 ms
 
     def editSeqStep(self, event):  # if you double-click on a step in the list, open its 'edit' dialog
         self.logger.info('Editing sequence step:')
