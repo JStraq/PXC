@@ -20,23 +20,23 @@ import Plotter as plt
 class ExpGUI:
     """ Contains the general framework of the control panel itself, and
         provides all the general functions for the buttons.
-        All execution starts here, then communicates with the other processes.
+        All user-facing execution starts here.
         
         Parameters
         ----------
         exp : ExpController
             overarching object to enable communication between parallel \
             processes during the run.
-        instReqQ : mp.JoinableQueue
+        instReqQ : multiprocessing.Queue
             Queue for requesting data or action from the instrumentation
             process
-        fileReqQ : mp.JoinableQueue
+        fileReqQ : multiprocessing.Queue
             Queue for requesting data or action from the file process
+        logQ : multiprocessing.Queue
+            Queue for sending event records to logs.
     """
     
     def __init__(self, exp, instReqQ, fileReqQ, logQ):
-        """ Initialize the GUI by creating the necessary placeholder variables
-        """
         self.exp = exp
         self.instReqQ = instReqQ
         self.fileReqQ = fileReqQ
@@ -70,14 +70,23 @@ class ExpGUI:
         
 
     def logError(self, exception, value, traceback):
+        """
+        Pass any errors into the log file to make sure they get saved
+        """        
         self.logger.exception(exception)
-#        self.logger.info(exception)
+
 
     def drawGUI(self, master):
-        """ Actually build the window itself, and dictate which widget goes where
-            and what each button does.
-            The GUI is built in a series of frames, which help to keep this
-            code and the layout itself more organized.
+        """ 
+        Actually build the window itself, and dictate which widget goes where
+        and what each button does.
+        The GUI is built in a series of frames, which help to keep this
+        code and the layout itself more organized.
+            
+        Parameters
+        ----------
+        master : tk.root
+            The base window into which everything will be populated
         """
         # SET UP THE FRAMES FOR EVERYTHING TO SIT IN
         self.pad = 10  # space between frames
@@ -204,8 +213,11 @@ class ExpGUI:
         
         self.logger.info('Finished Building GUI')
 
+
     def startGUI(self):
-        """ Starts the loop which handles all GUI input and output
+        """ 
+        Starts the loop which handles all GUI input and output.
+        Also handles the end condition when the GUI mainloop exits.
         """
         self.logger.info('GUI init')
         tk.mainloop()  # This is where the GUI itself runs: the mainloop handles all events
@@ -213,9 +225,7 @@ class ExpGUI:
         self.logger.info('GUI exit')
         self.exp.kill() # once the GUI closes, trigger destruction of other processes
         self.app.rm.close()
-        self.logger.info('Close gui pyvisa.resourcemanager')
         
-        return None
         
     def buildExperiment(self):
         """
@@ -276,10 +286,15 @@ class ExpGUI:
         # Gather the available instruments from VISA, sort into available
         hf.centerWindow(top)
         self.refreshBuildExp(top)
+        
 
     def refreshBuildExp(self, top):
         """
         Perform a VISA refresh on the apparatus, then push changes to the BuildExp GUI dialog
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
         """
         self.logger.info('Refreshing the BuildExperiment dialog')
         self.app.findInstruments()
@@ -299,7 +314,17 @@ class ExpGUI:
         for instr in newActive:  # replace with new
             top.activeListBox.insert(tk.END, str(instr))
 
+
     def activateInstr(self, top):
+        """
+        Check existence/uniqueness of the name, then move the instrument
+        to the active list and assign the new name.
+        
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
+        """
         if (len(top.availListBox.curselection()) != 0):  # if something in availListBox is selected
             if (top.namebox.get() != ''):  # and the name string box isn't empty
                 if top.namebox.get() not in [top.activeListBox.get(x).split(':')[0] for x in
@@ -326,7 +351,16 @@ class ExpGUI:
                 self.logger.info('Failed, no name given')
                 top.instToolTip.config(text='must provide name')  # with scary red text
 
+
     def deactivateInstr(self, top):
+        """
+        Remove the selected instrument from the active list
+        
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
+        """
         if len(top.activeListBox.curselection()) != 0:  # if something in activeListBox is selected
             instr = top.activeListBox.get(tk.ACTIVE)
             self.logger.info('Deactivate an instrument, {:s}'.format(instr))
@@ -344,11 +378,18 @@ class ExpGUI:
                 instr = newAvail[ii]
                 top.availListBox.insert(tk.END, str(instr))
 
-    def applyBuildExp(self, top):
-        '''
-        Push the current instrument configuration to the rest of the program/gui
-        '''
 
+    def applyBuildExp(self, top):
+        """
+        Push the current instrument configuration to the rest of the program/gui,
+        then close the dialog
+        
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
+        """
+        
         insts = self.app.instList
         self.logger.info('Pushing BuildExp changes to main GUI')
         self.logger.info('Instruments:')
@@ -370,17 +411,26 @@ class ExpGUI:
         top.grab_release()
         top.destroy()  # close this dialog
 
+
+
     def cancelBuildExp(self, top):
+        """
+        Abort all changes and close the dialog.
+        
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
+        """
         self.logger.info('Canceling BuildExp')
         top.grab_release()
         top.destroy()
 
-    def updateStatus(self):
-        es = self.exp.getStatus()
-        for ii in range(len(self.status)):
-            self.status[ii]['text'] = es[ii]
 
     def refreshInstruments(self):
+        """
+        Check the list of connected instruments and bring it up to date
+        """
         self.logger.info('Refreshing the instrument lists')
         activeInsts = []
         for inst in self.app.instList:
@@ -391,8 +441,23 @@ class ExpGUI:
             self.activeListBox.insert(tk.END, ai)
 
 
-    # SEQUENCE FUNCTIONS ---------------------------------------------------------------------------------------------------------------
+    def updateStatus(self):
+        """
+        Read the status indicators from the ``ExpController``
+        """
+        es = self.exp.getStatus()
+        for ii in range(len(self.status)):
+            self.status[ii]['text'] = es[ii]
+
+
+
+    # SEQUENCE FUNCTIONS -----------------------------------------
+
     def insertSeqStep(self):
+        """
+        Create a new sequence step, first by opening a box for the user
+        to choose what type, then creating that object in the apparatus sequence.
+        """
         self.logger.info('Inserting a new sequence step')
         self.insertType = None
         self.chooseStepType()  # open the step type selection window
@@ -411,8 +476,13 @@ class ExpGUI:
             
         self.master.lift()
         self.master.focus_force()
+        
 
-    def chooseStepType(self):  # describes the step selection window
+    def chooseStepType(self):
+        """
+        Sets up the GUI dialog used to select the sequence command type
+        """
+    
         if len(self.activeListBox.get(0, tk.END)) == 0:
             tkm.showerror(title='Nope', message="No active instruments!")
             return
@@ -432,7 +502,7 @@ class ExpGUI:
             cmdnames = [x.__name__ for x in cmdclasses]
             cmdorder = np.argsort(cmdnames)
             cmdclasses = [cmdclasses[ii] for ii in cmdorder]
-            for ii, subclass in enumerate(cmdclasses):
+            for ii, subclass in enumerate(cmdclasses): #loops through all existing/registered command types
                 if subclass is not sc.LoopEnd:
                     tk.Button(top, text=subclass.cmdname,
                           command=lambda x=subclass: self.setInsertType(top, x)).grid(column=0, row=ii, sticky='NSEW', padx=5)
@@ -441,13 +511,32 @@ class ExpGUI:
                                                                                               sticky='NSEW', padx=5)
             self.root.wait_window(top)
 
-    def setInsertType(self, top, insertType):  # when the user picks an item to insert,
+
+    def setInsertType(self, top, insertType):
+        """
+        This function runs when the user clicks one of the buttons on the 
+        selection dialog.  It sets the ``self.insertType`` flag to the
+        proper type so that the object can be created
+        
+        Parameters
+        ----------
+        top : tk.toplevel
+            The instrument select dialog box
+        insertType : subclass of ``SeqCmd``
+            What type to set when this button is pressed
+        """        
+        # when the user picks an item to insert,
         self.logger.info('Setting insertType')
         self.insertType = insertType  # store it
         top.grab_release()
         top.destroy()  # and close the dialog
 
+
     def updateSequence(self):
+        """
+        Grab any changes to the sequence from the apparatus and make
+        sure the GUI is accurate
+        """
         self.logger.info('Updating sequence to GUI')
         self.app.updateTitles()
         self.sequenceList.delete(0, tk.END)
@@ -459,8 +548,16 @@ class ExpGUI:
             if not en:
                 self.sequenceList.itemconfig(ii, {'fg': 'gray'})
                 
-    def runSequence(self):  # each command stores all its actions, the ExpController just stores the steps.
-
+                
+    def runSequence(self): 
+        """
+        Reconfigure the GUI to enable or disable appropriate features,
+        then start the child processes for parallelized remote communication
+        and file reading/writing.  The main process continues to handle GUI
+        updates, plotting, and logging.
+        """
+        
+        # each command stores all its actions, the ExpController just stores the steps.
         if (self.user.get() == '') or (self.project.get() == '') or (self.sample.get() == ''):
             tkm.showwarning('Nope', "Tell me what you're running so I can put it in the right folder!")
         elif self.sequenceList.size() == 0:
@@ -501,7 +598,6 @@ class ExpGUI:
             instproc.start()
 
             # Set up the file reading and writing process
-#            if not self.exp.isFileOpen():
             self.exp.openFile()
             fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
             fileproc.name = 'file'
@@ -521,7 +617,19 @@ class ExpGUI:
 
             self.sequenceWatcher()  # instigate the watchdog
 
+
     def writeMeta(self, dataDir, filename):
+        """
+        Write all of the current settings to a metadata file.  This is run
+        every time the user starts a sequnce.
+        
+        Parameters
+        ----------
+        dataDir : str
+            Where to save the data
+        filename : str
+            What to call the data
+        """
         self.logger.info('Opening Meta file')
         metaDir = dataDir + 'meta/'
         if not os.path.exists(metaDir):
@@ -538,7 +646,14 @@ class ExpGUI:
             f.write('\n')
             f.write(self.app.serialize().replace('COMMANDS:', '\nCOMMANDS:'))
 
+
+
     def sequenceWatcher(self):
+        """
+        This function runs periodically during the sequence to make sure
+        all of the changes are updated.  It also detects when the sequence
+        is complete, and it reinitializes the GUI back to the noral state.
+        """
         if not self.exp.isRunning():
             self.logger.info('Run detected as complete')
             self.runSeqButton['state'] = 'normal'
@@ -564,7 +679,14 @@ class ExpGUI:
             self.updatePlot()
             self.root.after(500, self.sequenceWatcher)  # update the gui every 500 ms
 
-    def editSeqStep(self, event):  # if you double-click on a step in the list, open its 'edit' dialog
+
+    def editSeqStep(self, event):
+        """
+        If you double-click on a step in the list, open its 'edit' dialog
+        
+        Parameters : event
+            unused, but passed in by tk binding anyway
+        """
         self.logger.info('Editing sequence step:')
         if len(self.app.sequence)>0:
             if len(self.activeListBox.get(0,tk.END)) != 0:  # only edit if at least SOMETHING is active.
@@ -578,19 +700,43 @@ class ExpGUI:
             else:
                 tkm.showerror('Nope', 'No active instruments!')
 
-    def delSeqStep(self):  # deletes all selected elements from the list
+
+    def delSeqStep(self):
+        """
+        deletes all selected elements from the list
+        """
         indices = list(self.sequenceList.curselection())
         self.app.deleteSteps(indices)
         self.app.updateTitles()
         self.updateSequence()
+        
 
-    def sendInstRequest(self, reqname, arguments):  # adds a single request to the queue, blocks until it's processed
+    def sendInstRequest(self, reqname, arguments):
+        """
+        adds a single request to the queue, blocks until it's processed
+        
+        Parameters
+        ----------
+        reqname : str
+            Type of request to be made
+        arguments : tuple
+            Any necessary data to send along with this request
+            
+        Returns
+        -------
+        self.ns.instAns : str
+            The response from the instrument process
+        """
         request = ih.instRequest(reqname, args=arguments)
         self.instReqQ.put(request)
         self.instReqQ.join()
         return self.ns.instAns
 
-    def dupSeqStep(self):  # duplicates all selected elements in the list, keeping them in order when adjacent
+
+    def dupSeqStep(self):
+        """
+        duplicates all selected elements in the list, keeping them in order when adjacent
+        """
         indices = list(self.sequenceList.curselection()[::-1])
         indices = sorted(indices)
 
@@ -625,7 +771,12 @@ class ExpGUI:
         self.app.protectLoops()
         self.updateSequence()
 
-    def moveSeqUp(self):  # moves all selected items up one item, maintaining order when adjacent items are selected
+
+
+    def moveSeqUp(self):
+        """
+        moves all selected items up one item, maintaining order when adjacent items are selected
+        """
         indices = list(self.sequenceList.curselection())
 
         selected = []
@@ -652,7 +803,11 @@ class ExpGUI:
         for ii in newIndices:
             self.sequenceList.selection_set(ii)
 
-    def moveSeqDown(self):  # moves all selected items down
+
+    def moveSeqDown(self):
+        """
+        moves all selected items down
+        """
         indices = list(self.sequenceList.curselection())
 
         selected = []
@@ -683,20 +838,44 @@ class ExpGUI:
         for ii in newIndices:
             self.sequenceList.selection_set(ii)
             
+            
     def abortSequence(self):
+        """
+        Just sets the ``abort`` flag for the ExpController: all three
+        processes will see that on their next updates and start exiting.
+        """
         self.exp.abort()
 
 
     def updatePlot(self, newSettings=False):
+        """
+        Updates the plots
+        
+        Parametrs
+        ---------
+        newsettings : boolean
+            whether or not the settings have been changed.  If yes, then a 
+            full re-read of the relevant data is required.  If no, then we
+            can just append the last few datapoints for a quicker operation.
+        TODO: THIS ISN'T IMPLEMENTED YET
+        """
         self.framePlt.updatePlots()
 
+
     def confirm_quit(self):
+        """
+        Make sure the user meant to close the GUI
+        """
         if tkm.askyesno("Quit?", "Are you sure?"):
             self.master.destroy()
             self.exp.closeFile()
             self.exp.kill()
 
+
     def saveSeqFile(self):
+        """
+        Open the dialog to save a sequence file
+        """
         seqFile = tk.filedialog.asksaveasfile(mode='w', defaultextension=".seq")
         if seqFile is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
@@ -705,7 +884,12 @@ class ExpGUI:
         seqFile.close()
 
     def loadSeqFile(self):
-
+        """
+        Open the dialog to load a sequence file, reads it, and rebuilds
+        the necessary connections.  The user will be forced to map
+        the old and new instruments every time, which is unavoidable given
+        the inherent flexibility of this scheme.
+        """
         # open a file
         seqFile = tk.filedialog.askopenfile(mode='r')
         if seqFile is None:
@@ -819,7 +1003,12 @@ class ExpGUI:
         hf.centerWindow(self.window)
         self.master.wait_window(self.window)
 
+    
     def loadMap(self):
+        """
+        Make all of the necessary replacements to map the old sequence
+        into the new setup
+        """
         newnames = [nv.get() for nv in self.nameVars]
         newaddrnums = [cv.get().split(':')[0] for cv in self.comboVars]
         newaddrs = ['GPIB0::{:s}::INSTR'.format(addrnum) for addrnum in newaddrnums]
@@ -853,7 +1042,11 @@ class ExpGUI:
                 self.updateSequence()
                 self.refreshInstruments()
 
+
     def enableSteps(self):
+        """
+        Mark all selected steps enabled to run during the next sequence
+        """
         indices = self.sequenceList.curselection()
         for ii in indices:  # make sure to treat loops and their ends the same way
             if isinstance(self.app.sequence[ii], sc.LoopCmd):
@@ -874,7 +1067,11 @@ class ExpGUI:
         return None
         self.updateSequence()
 
+        
     def disableSteps(self):
+        """
+        Mark all selected steps as disabled, will NOT run during the next sequence
+        """
         indices = self.sequenceList.curselection()
         for ii in indices:  # make sure to treat loops and their ends the same way
             if isinstance(self.app.sequence[ii], sc.LoopCmd):
@@ -894,7 +1091,11 @@ class ExpGUI:
             self.app.sequence[ii].enabled = False
         self.updateSequence()
 
+
     def addMonitor(self):
+        """
+        Create a new variable monitor on the left hand side of the screen.
+        """
         hf.noimp()
 #        if 'Timestamp' in self.monHeaders:
 #            self.monHeaders.remove('Timestamp')
@@ -931,6 +1132,14 @@ class ExpGUI:
 #            self.refreshMonitors()
 
     def subMonitor(self, ii):
+        """
+        Delete a variable monitor
+        
+        Pameters
+        --------
+        ii : int
+            The row number of the monitor to be deleted
+        """
         hf.noimp()
 #        monCount = len(self.monInsts) - 1
 #        self.addMonButton.grid_forget()
@@ -961,6 +1170,14 @@ class ExpGUI:
 #            self.monValLabels[jj].grid(row=4+jj, column=3, sticky='NSEW')
 
     def updateMonParams(self, v,n,m, ii):
+        """
+        Make sure the parameter options match the selected instrument
+        
+        Parameters
+        ----------
+        ii : int
+            the row to update
+        """
         hf.noimp()
 #        inst = self.monInsts[ii].get()
 #        params = []
@@ -982,6 +1199,14 @@ class ExpGUI:
 #        self.updateMonUnits(None,None,None,ii)
     
     def updateMonUnits(self, v,n,m, ii):
+        """
+        Make sure the displayed units match the selected parameter
+        
+        Parameters
+        ----------
+        ii : int
+            the row to update
+        """
         hf.noimp()
 #        insts = []
 #        params = []
@@ -999,6 +1224,13 @@ class ExpGUI:
 #        self.monUnits = units[:]
     
     def refreshMonitors(self):
+        """
+        Grab the most recent values of this monitor.
+        If a sequence is not running, this causes the apparatus to request
+        a measurement of these instruments.  If a sequence IS running, then
+        the displayed data will just be the last value which was read.
+        (This is intended to avoid having monitor measurements interfere with the sequence.)
+        """
         hf.noimp()
 #        insts = [x.get() for x in self.monInsts]
 #        params = [x.get() for x in self.monParams]

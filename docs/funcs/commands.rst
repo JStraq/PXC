@@ -1,9 +1,6 @@
 commands package
 =====================
 
-Submodules
-----------
-
 
 commands.SeqCommand module
 -------------------------------
@@ -14,6 +11,7 @@ commands.SeqCommand module
    :show-inheritance:
    
    
+
 
 commands.CMeasCommand module
 ---------------------------------

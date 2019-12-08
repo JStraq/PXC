@@ -8,6 +8,12 @@ Backend documentation
    
    funcs/Apparatus
    funcs/commands
+   funcs/ExpController
+   funcs/ExpGUI
+   funcs/FileHandlers
+   funcs/HelperFunctions
+   funcs/InstHandlers
    funcs/instruments
+   funcs/LogHandlers
    funcs/Plotter
    
