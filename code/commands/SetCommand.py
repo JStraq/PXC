@@ -3,9 +3,35 @@ from tkinter import ttk
 from . import SeqCommand as sc
 import HelperFunctions as hf
 
+
 class SetCmd(sc.SeqCmd):
     """
     Change an arbitrary number of settings or execute simple commands
+    
+    Parameters
+    ----------
+    exp : ExpController
+    app : Apparatus
+    pos : int
+        Numerical position in the sequence, starting from zero.
+    dup : boolean
+        Flag for whether or not to open the configuration window:\
+        for a brand new sequence command, we need to open it.  If \
+        we're just copying an old one, we don't.
+    gui : ExpGUI
+        A link to the GUI: this is set whenever the sequence is active, \
+        and equal to ``None`` if the command is being saved to a sequence file.
+
+    Attributes
+    ----------
+    rows : int
+        number of parameters to be interrogated (default 0)
+    selParams : list of Param
+        ordered list of the parameters to be edited
+    selInsts : list of Instrument
+        ordered list of the instruments to be edited
+    selVars : list
+        New values to set for each command
     """
     cmdname = 'Change Settings'
     def __init__(self, exp, app, pos=None, dup=False, gui=None):
@@ -18,6 +44,7 @@ class SetCmd(sc.SeqCmd):
         self.selInsts = []  # run on this instrument
         self.selParams = []  # and set this parameter
         self.selVals = []  # to this value
+        self.rowheight = 30
 
         self.actualInsts = []
 
@@ -25,9 +52,11 @@ class SetCmd(sc.SeqCmd):
         if not dup:
             self.edit()
     
+    
     def accept(self):
         """
-        If the window is closed, destroy widgets on the window and save all the settings into the instance variables.
+        If the window is closed, destroy widgets on the window and save\
+        all the settings into the instance variables.
         """
 
         # save the settings
@@ -45,8 +74,6 @@ class SetCmd(sc.SeqCmd):
         self.ptraces = []
         
         self.updateTitle()
-        self.window.grab_release()
-        self.window.destroy()
 
         #clear more tk lists
         self.instBoxes = []
@@ -55,6 +82,10 @@ class SetCmd(sc.SeqCmd):
         self.valLabels = []
         self.subRows = []
         self.addRow = None
+        
+        self.window.grab_release()
+        self.window.destroy()
+
 
     def updateTitle(self):
         """
@@ -70,9 +101,15 @@ class SetCmd(sc.SeqCmd):
             self.title = 'Set {:s}, {:s}, ...'.format(self.selParams[0],self.selParams[1])
         self.title = hf.enumSequence(self.pos, self.title)
 
+
     def edit(self, running=False):
         """
         Open a window to edit the settings
+        
+        Parameters
+        ----------
+        running : boolean
+            only allow changes if a sequence is not running
         """
         self.instruments = []
         for inst in self.app.instList:
@@ -83,7 +120,9 @@ class SetCmd(sc.SeqCmd):
 
         self.actualInsts = []
         self.window = tk.Toplevel(self.gui.root)
+        self.window.resizable(False, False)
         self.window.attributes("-topmost", True)
+        
         self.window.wm_title('Edit Set Command')
         self.window.protocol("WM_DELETE_WINDOW",
                              self.accept)  # if they delete the window, assume they liked their settings
@@ -113,12 +152,38 @@ class SetCmd(sc.SeqCmd):
         for ii in range(0, self.rows):  # how many commands are added here? (default 0 for first edit)
             self.createRow(new=False)
         hf.centerWindow(self.window)
+        self.updateSize()
         self.gui.root.wait_window(self.window)
+
+
+    def updateSize(self):
+        """
+        Make sure the edit dialog is large enough to accommodate its content
+        """
+        rowpx = self.rowheight*(self.rows+2)
+        self.window.geometry('{:d}x{:d}'.format(600,rowpx))
+        for ii in range(self.rows+2):
+            self.window.grid_rowconfigure(ii, weight=0, minsize=self.rowheight)
+        for ii in range(1,4):
+            self.window.grid_columnconfigure(ii, weight=1, minsize=20)
+        self.window.grid_columnconfigure(0,weight=0,minsize=1)
+        self.window.grid_columnconfigure(4,weight=0,minsize=20)    
+            
 
     def updateOptions(self, v, n, m, ii, level):
         """
         When the user picks a different instrument or parameter, change other downstream inputs
         to accommodate valid responses.
+        
+        Parameters
+        ----------
+        ii : int
+            row number under consideration
+        level : string
+            This one function handles both instrument level changes (where\
+            it updates the list of possible parameters) as well as parameter\
+            level changes, where it sets up the GUI to take the proper type
+            of input.  Which one is relevant is set by ``level='inst'`` or ``'param'``.
         """
         if level == 'inst':  # user selected a new isntrument
             try:
@@ -149,21 +214,27 @@ class SetCmd(sc.SeqCmd):
                     self.valBoxes[ii].destroy()  # then we'll have to delete it
                 if param.type == 'cont':  # then we'll create an input box of the right type
                     self.valBoxes[ii] = tk.Entry(self.window, textvariable=self.selValsVar[ii])
-                    self.valBoxes[ii].grid(column=3, row=ii + 1)
+                    self.valBoxes[ii].grid(column=3, row=ii + 1, sticky='NSEW')
                     self.valBoxes[ii].bind('<FocusOut>', lambda event: self.protectValue(event, ii=ii))
                     self.protectValue(None, ii)
                 elif param.type == 'disc':
                     self.valBoxes[ii] = (ttk.Combobox(self.window, textvariable=self.selValsVar[ii]))
                     self.valBoxes[ii]['values'] = labeledVals
                     self.valBoxes[ii].current(0)
-                    self.valBoxes[ii].grid(column=3, row=ii + 1)
+                    self.valBoxes[ii].grid(column=3, row=ii + 1, sticky='NSEW')
                 else:
                     self.valBoxes[ii] = None
             self.valUnitsVar[ii].set(param.units)
 
+
     def createRow(self, new=True):
         """
         Generate a new set of boxes on the GUI window
+        Parameters
+        ----------
+        new : boolean
+            If the user created a new one, guess what to use.  Otherwise,
+            it already exists and we should just use whatever is already there.
         """
         if new:
             ii = int(self.rows)
@@ -188,7 +259,7 @@ class SetCmd(sc.SeqCmd):
                 self.instBoxes[ii].current(self.stringInsts.index(self.selInsts[ii]))
             except ValueError:
                 self.instBoxes[ii].current(0)
-        self.instBoxes[ii].grid(column=1, row=ii + 1)
+        self.instBoxes[ii].grid(column=1, row=ii + 1, sticky='NSEW')
         self.actualInsts.append(self.instruments[self.stringInsts.index(self.instBoxes[ii].get())])
 
         self.paramBoxes.append(ttk.Combobox(self.window, textvariable=self.selParamsVar[ii], state=state))
@@ -200,7 +271,7 @@ class SetCmd(sc.SeqCmd):
                 self.paramBoxes[ii].current(self.paramBoxes[ii]['values'].index(self.selParams[ii]))
             except ValueError:
                 self.paramBoxes[ii].current(0)
-        self.paramBoxes[ii].grid(column=2, row=ii + 1)
+        self.paramBoxes[ii].grid(column=2, row=ii + 1, sticky='NSEW')
 
         # depending on the parameter type chosen by default, you'll need different types of value boxes
         param = self.actualInsts[ii].getParam(self.paramBoxes[ii].get())
@@ -224,20 +295,20 @@ class SetCmd(sc.SeqCmd):
                 if ii<len(self.selVals):
                     self.selValsVar[ii].set(self.selVals[ii])
                 self.protectValue(None, ii)
-            self.valBoxes[ii].grid(column=3, row=ii + 1)
+            self.valBoxes[ii].grid(column=3, row=ii + 1, sticky='NSEW')
         else:
             self.valBoxes.append(None)
 
         # When relevant, show the user what units they'll be working in
         self.valUnitsVar[ii].set(param.units)
         self.valLabels.append(tk.Label(self.window, textvariable=self.valUnitsVar[ii]))
-        self.valLabels[ii].grid(column=4, row=ii + 1)
+        self.valLabels[ii].grid(column=4, row=ii + 1, sticky='NSW')
 
         # move and rebuild the control buttons
         if not self.running:
             self.addRow.destroy()
             self.subRows.append(tk.Button(self.window, text='X', activeforeground='red', command=lambda ii=ii: self.destroyRow(ii)))
-            self.subRows[ii].grid(column=0, row=ii+1)
+            self.subRows[ii].grid(column=0, row=ii+1, sticky='NSEW')
             self.addRow = tk.Button(self.window, text='...', command=self.createRow)
             self.addRow.grid(column=1, columnspan=3, row=ii + 2, sticky='NSEW')
             self.itraces.append(
@@ -245,7 +316,23 @@ class SetCmd(sc.SeqCmd):
             self.ptraces.append(
                 self.selParamsVar[ii].trace("w", lambda v, n, m, ii=ii: self.updateOptions(v, n, m, ii, 'param')))
 
+        self.updateSize()
+        
+
     def protectValue(self, event, ii):
+        """
+        Coerce the user's input value into the range of reasonable values
+        for the given parameter.
+        
+        Parameters
+        ----------
+        event : tuple
+            This argument is unused, but the tk trace which triggers this
+            event sends it by default anyway.
+        ii : int
+            Which row to check and coerce.
+        
+        """
         try:
             param = self.actualInsts[ii].getParam(self.paramBoxes[ii].get())
     
@@ -255,24 +342,34 @@ class SetCmd(sc.SeqCmd):
                 try:
                     val = val.strip(' \t\n\r')
                     fval = float(val)
-                    fmtstring = '{:f}'
-                    if param.prec is not None:
-                        fval = round(fval, param.prec)
-                        fmtstring = '{{:.{:d}f}}'.format(
-                            param.prec)  # I hate this... but I don't know how else to dynamically format
-                    if param.pmax is not None:  # the string with the proper precision...
-                        fval = param.pmax if fval > param.pmax else fval
-                    if param.pmin is not None:
-                        fval = param.pmin if fval < param.pmin else fval
-                    newvals.append(fmtstring.format(fval))
                 except ValueError:
-                    pass
+                    fval = 0.0
+                fmtstring = '{:f}'
+                if param.prec is not None:
+                    fval = round(fval, param.prec)
+                    fmtstring = '{{:.{:d}f}}'.format(
+                        param.prec)  # I hate this... but I don't know how else to dynamically format
+                if param.pmax is not None:  # the string with the proper precision...
+                    fval = param.pmax if fval > param.pmax else fval
+                if param.pmin is not None:
+                    fval = param.pmin if fval < param.pmin else fval
+                newvals.append(fmtstring.format(fval))
+                    
             pvals = ",".join(newvals)
             self.selValsVar[ii].set(pvals)
         except IndexError:
             pass
 
-    def destroyRow(self, ii):  # hitting the little 'X' button to the left removes that row and all its data.
+
+    def destroyRow(self, ii):
+        """
+        hitting the little 'X' button to the left removes that row and all its data.
+        
+        Parameters
+        ----------
+        ii : int
+            Which row to edit
+        """
         self.rows -= 1
 
         # carefully strip the callbacks to we don't trigger from or to dead buttons
@@ -307,17 +404,24 @@ class SetCmd(sc.SeqCmd):
             self.paramBoxes[ii].grid(column=2, row=ii+1, sticky='NSEW')
             if self.valBoxes[ii] is not None:
                 self.valBoxes[ii].grid_forget()
-                self.valBoxes[ii].grid(column=3, row=ii+1)
+                self.valBoxes[ii].grid(column=3, row=ii+1, sticky='NSEW')
             if self.valLabels[ii] is not None:
                 self.valLabels[ii].grid_forget()
-                self.valLabels[ii].grid(column=4, row=ii+1)
+                self.valLabels[ii].grid(column=4, row=ii+1, sticky='NSW')
         self.addRow.destroy()
         self.addRow = tk.Button(self.window, text='...', command=self.createRow)
         self.addRow.grid(column=1, columnspan=3, row=self.rows+1, sticky='NSEW')
+        self.updateSize()        
+        
         
     def execute(self, fileReqQ):
         """
         Write the selected values to the selected parameters on the selected instruments
+        
+        Parameters
+        ----------
+        fileReqQ : multiprocessing.Queue
+            queue for sending data to the file (unused, but required for superclass)
         """
         self.stringInsts = [str(x) for x in self.instruments]
         if not self.exp.isAborted():            # if the sequence is still running
@@ -346,5 +450,15 @@ class SetCmd(sc.SeqCmd):
                     else:
                         pass  # the user didn't supply a value, even though I asked for one.  Forget that clown.
 
+
     def getMeasHeaders(self):
+        """
+        Get list of headers to which this command can contribute data:
+        always none for this type.
+        
+        Returns
+        -------
+        list
+            an empty list literal
+        """
         return []

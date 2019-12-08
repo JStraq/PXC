@@ -428,7 +428,11 @@ class ExpGUI:
             
             # Generates all the buttons based on the subclasses in the "commands" folder.
             # Pressing the button stores the proper type, so that "insertSeqStep" knows how to make it.
-            for ii, subclass in enumerate(sc.SeqCommand.SeqCmd.__subclasses__()):
+            cmdclasses = sc.SeqCommand.SeqCmd.__subclasses__()
+            cmdnames = [x.__name__ for x in cmdclasses]
+            cmdorder = np.argsort(cmdnames)
+            cmdclasses = [cmdclasses[ii] for ii in cmdorder]
+            for ii, subclass in enumerate(cmdclasses):
                 if subclass is not sc.LoopEnd:
                     tk.Button(top, text=subclass.cmdname,
                           command=lambda x=subclass: self.setInsertType(top, x)).grid(column=0, row=ii, sticky='NSEW', padx=5)

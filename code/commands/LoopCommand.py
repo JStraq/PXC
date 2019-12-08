@@ -7,7 +7,11 @@ import numpy as np
 import time
 import FileHandlers as fh
 
-class LoopCmd(sc.SeqCmd):  # command for repeating chunks of code, but varying parameter each time
+
+class LoopCmd(sc.SeqCmd):
+    """
+    command for repeating chunks of code, but varying a parameter each time
+    """
     cmdname='Loop'
     def __init__(self, exp, app, pos=None, dup=False, gui=None):
         sc.SeqCmd.__init__(self, exp=exp, app=app, pos=pos, dup=dup, gui=gui)

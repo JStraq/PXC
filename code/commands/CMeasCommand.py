@@ -240,6 +240,8 @@ class CMeasCmd(sc.SeqCmd):
             self.addRow.grid_forget()
             self.addRow.grid(column=5, columnspan=3, row=ii + 1, sticky='NSEW')
         
+        self.window.grid_rowconfigure(ii, weight=1, minsize=self.rowheight)
+        self.window.grid_rowconfigure(ii+1, weight=1, minsize=self.rowheight)
         self.updateSize()
 
 

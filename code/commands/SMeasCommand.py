@@ -5,6 +5,7 @@ import FileHandlers as fh
 from datetime import datetime
 import HelperFunctions as hf
 
+
 class SMeasCmd(sc.SeqCmd):
     """
     Perform a one-time measurement of as many parameters as the user desires.
