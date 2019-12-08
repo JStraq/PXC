@@ -5,12 +5,23 @@ import HelperFunctions as hf
 from datetime import datetime
 import numpy as np
 import time
+import random
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.figure import Figure
 import FileHandlers as fh
 
 
 class LoopCmd(sc.SeqCmd):
     """
     command for repeating chunks of code, but varying a parameter each time
+    This command has a counterpart ``LoopEnd``, which is a placeholder which
+    redirects the sequence back to the top when necessary.
+    
+    Attributes
+    ----------
+    mode : str
+    spacing : str
+    
     """
     cmdname='Loop'
     def __init__(self, exp, app, pos=None, dup=False, gui=None):
@@ -24,7 +35,7 @@ class LoopCmd(sc.SeqCmd):
         self.spacing = 'Linear'  # how do you want to space the sampling points?
         self.start = 0.0  # where to start
         self.stop = 1.0  # where to end (used only for ramping)
-        self.npoints = 2  # points per direction (entire ramp or each entire cycle)
+        self.npoints = 10  # points per direction (entire ramp or each entire cycle)
         self.max = 1  # cycles only
         self.min = -1  # cycles only
         self.dir = 'Up First'  # up first or down first (cycles)
@@ -44,6 +55,8 @@ class LoopCmd(sc.SeqCmd):
 
         if not dup:
             self.edit()
+            
+            
 
     def edit(self, running=False):
         self.updateInstList()
@@ -138,6 +151,7 @@ class LoopCmd(sc.SeqCmd):
 
         tk.Label(self.window, text='Sweep Type:').grid(column=0, row=1, sticky='NSE', padx=5)
         self.modeBox = ttk.Combobox(self.window, textvariable=self.modeVar, state=state)
+        self.modeBox.bind('<FocusOut>', self.updateValues)
         self.modeBox['values'] = ['Ramp', 'Cycle']
         if self.modeVar.get() not in self.modeBox['values']:
             self.modeBox.current(0)
@@ -154,6 +168,13 @@ class LoopCmd(sc.SeqCmd):
         else:
             self.waitBox.current(self.waitBox['values'].index(self.wait))
         self.waitBox.grid(column=4, row=1, sticky='NSEW', padx=5, columnspan=2)
+        
+        self.figure = Figure(figsize=(3, 3), dpi=75)
+        self.subplot = self.figure.add_subplot(111)
+        self.plotCanvas = FigureCanvasTkAgg(self.figure, self.window)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.window)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(row=9, column=0, columnspan=6, sticky='NSEW')
 
         if not self.running:
             self.waitTrace = self.waitVar.trace("w", self.updateWait)
@@ -161,11 +182,39 @@ class LoopCmd(sc.SeqCmd):
             self.instTrace1 = self.instVar.trace("w", self.updateSweepParams)
             self.paramTrace1 = self.paramVar.trace("w", self.updateUnits)
 
+        self.window.resizable(False,False)
+        for ii in range(9):
+            self.window.grid_rowconfigure(ii, minsize=30)
+        self.window.grid_rowconfigure(9, minsize=300)
+        
+        self.window.grid_columnconfigure(0, minsize=100)
+        self.window.grid_columnconfigure(1, minsize=200)
+        self.window.grid_columnconfigure(2, minsize=50)
+        self.window.grid_columnconfigure(3, minsize=100)
+        self.window.grid_columnconfigure(4, minsize=100)
+        self.window.grid_columnconfigure(5, minsize=100)
+
+
         self.updateMode()
         self.updateWait()
+        self.updatePlot(running)
 
         hf.centerWindow(self.window)
         self.gui.root.wait_window(self.window)
+
+
+    def updatePlot(self, running=False):   
+        self.subplot.clear()
+        self.subplot.plot(self.allValues, 'ko-')
+        inst = self.instruments[self.stringInsts.index(self.instVar.get())]
+        param = inst.getParam(self.paramVar.get())
+        self.subplot.set_ylabel('{:s}-{:s} ({:s})'.format(inst.name, param.name, param.units))
+        if self.spacingVar.get() == 'Logarithmic':
+            self.subplot.set_yscale('log')
+        else:
+            self.subplot.set_yscale('linear')
+        self.canvas.draw()
+
 
     def updateUnits(self, *args):
         inst = self.instruments[self.stringInsts.index(self.instVar.get())]
@@ -188,6 +237,7 @@ class LoopCmd(sc.SeqCmd):
             self.units2[1]['text'] = unit
 
         self.updateValues()
+
 
     def updateMode(self, *args):
         state = tk.DISABLED if self.running else tk.NORMAL
@@ -212,7 +262,12 @@ class LoopCmd(sc.SeqCmd):
             self.boxes1[1] = tk.Entry(self.window, textvariable=self.stopVar, state=state)
             self.boxes1[2] = tk.Entry(self.window, textvariable=self.npointsVar, state=state)
             self.boxes1[3] = ttk.Combobox(self.window, textvariable=self.spacingVar, state=state)
-            self.boxes1[3]['values'] = ['Linear', 'Logarithmic']
+            
+            self.boxes1[3]['values'] = ['Linear',
+                                        'Logarithmic',
+                                        'Sinusoidal',
+                                        'Uniform Random']
+            
             if self.spacingVar.get() not in self.boxes1[3]['values']:
                 self.boxes1[3].current(0)
 
@@ -229,8 +284,7 @@ class LoopCmd(sc.SeqCmd):
                 if self.boxes1[ii] is not None:
                     self.boxes1[ii].grid(column=1, row=2 + ii, sticky='NSEW', padx=5)
                     if not self.running:
-                        if type(self.boxes1[ii]) == tk.Entry:
-                            self.boxes1[ii].bind('<FocusOut>', self.updateValues)
+                        self.boxes1[ii].bind('<FocusOut>', self.updateValues)
                 if self.units1[ii] is not None:
                     self.units1[ii].grid(column=2, row=2 + ii, sticky='NSW', padx=5)
 
@@ -259,7 +313,10 @@ class LoopCmd(sc.SeqCmd):
             self.boxes1[2] = tk.Entry(self.window, textvariable=self.minVar, state=state)
             self.boxes1[3] = tk.Entry(self.window, textvariable=self.npointsVar, state=state)
             self.boxes1[4] = ttk.Combobox(self.window, textvariable=self.spacingVar, state=state)
-            self.boxes1[4]['values'] = ['Linear', 'Log']
+            self.boxes1[4]['values'] = ['Linear',
+                                        'Logarithmic',
+                                        'Sinusoidal',
+                                        'Uniform Random']
             if self.spacingVar.get() not in self.boxes1[4]['values']:
                 self.boxes1[4].current(0)
             self.boxes1[5] = tk.Entry(self.window, textvariable=self.cyclesVar, state=state)
@@ -281,10 +338,12 @@ class LoopCmd(sc.SeqCmd):
                     self.labels1[ii].grid(column=0, row=2 + ii, sticky='NSE', padx=5)
                 if self.boxes1[ii] is not None:
                     self.boxes1[ii].grid(column=1, row=2 + ii, sticky='NSEW', padx=5)
-                    if type(self.boxes1[ii]) == tk.Entry:
-                        self.boxes1[ii].bind('<FocusOut>', self.updateValues)
+#                    if type(self.boxes1[ii]) == tk.Entry:
+                    self.boxes1[ii].bind('<FocusOut>', self.updateValues)
                 if self.units1[ii] is not None:
                     self.units1[ii].grid(column=2, row=2 + ii, sticky='NSW', padx=5)
+
+
 
     def updateWait(self, *args):
         state = tk.DISABLED if self.running else tk.NORMAL
@@ -366,8 +425,8 @@ class LoopCmd(sc.SeqCmd):
                     self.labels2[ii].grid(column=3, row=2 + ii, sticky='NSE', padx=5)
                 if self.boxes2[ii] is not None and ii is not 0:
                     self.boxes2[ii].grid(column=4, row=2 + ii, sticky='NSEW', padx=5)
-                    if type(self.boxes2[ii]) == tk.Entry:
-                        self.boxes2[ii].bind('<FocusOut>', self.updateValues)
+#                    if type(self.boxes2[ii]) == tk.Entry:
+                    self.boxes2[ii].bind('<FocusOut>', self.updateValues)
                 if self.units2[ii] is not None:
                     self.units2[ii].grid(column=5, row=2 + ii, sticky='NSW', padx=5)
             self.boxes2[0].grid(column=4, row=2, sticky='NSEW', padx=5)
@@ -379,14 +438,33 @@ class LoopCmd(sc.SeqCmd):
 
         self.updateValues()
 
+
+
     def updateValues(self, *args):
         inst = self.instruments[self.stringInsts.index(self.instVar.get())]
         param = inst.getParam(self.paramVar.get())
         pmax = param.pmax
         pmin = param.pmin
 
-        self.npointsVar.set(max(2, round(self.npointsVar.get())))
+        # round number of points to int, number of cycles to half-integer
+        n = self.npointsVar.get()
+        try:
+            n = float(n)
+        except ValueError:
+            n = 0
+        self.npointsVar.set(max(2, round(n)))
         self.cyclesVar.set(round(self.cyclesVar.get() * 2) / 2)
+        
+        # prevent log of negative numbers
+        if self.spacingVar.get() == 'Logarithmic':
+            if self.startVar.get() <= 0:
+                self.startVar.set(max(self.startVar.get(), 1e-9))
+            if self.stopVar.get() <= 0:            
+                self.stopVar.set(max(self.stopVar.get(), 1e-9))
+            if self.maxVar.get() <= 0:
+                self.maxVar.set(max(self.maxVar.get(), 1e-9))
+            if self.minVar.get() <= 0:
+                self.minVar.set(max(self.minVar.get(), 1e-9))
 
         # first coerce to within parameter limits
         if pmin is not None:
@@ -415,11 +493,20 @@ class LoopCmd(sc.SeqCmd):
         if self.modeVar.get() == 'Ramp':
             if self.spacingVar.get() == 'Linear':
                 self.allValues = np.linspace(self.startVar.get(), self.stopVar.get(), self.npointsVar.get())
-            else:
+                
+            elif self.spacingVar.get() == 'Logarithmic':
                 self.allValues = np.logspace(np.log10(self.startVar.get()), np.log10(self.stopVar.get()),
                                              self.npointsVar.get())
+                                             
+            elif self.spacingVar.get() == 'Sinusoidal':
+                x = np.linspace(0, np.pi/2, self.npointsVar.get())
+                self.allValues = self.startVar.get() + (self.stopVar.get() - self.startVar.get())*np.sin(x)
+                
+            elif self.spacingVar.get() == 'Uniform Random':
+                self.allValues = np.linspace(self.startVar.get(), self.stopVar.get(), self.npointsVar.get())
+                random.shuffle(self.allValues)
 
-        else:
+        else:  # Cycle
             if self.spacingVar.get() == 'Linear':
                 try:
                     nup = abs(self.npointsVar.get() * (self.maxVar.get() - self.startVar.get()) / (
@@ -433,8 +520,17 @@ class LoopCmd(sc.SeqCmd):
                     ndown = 0
                 upcycle = np.linspace(self.startVar.get(), self.maxVar.get(), np.ceil(nup / 2))
                 downcycle = np.linspace(self.startVar.get(), self.minVar.get(), np.ceil(ndown / 2))
+                
+                upcycle = np.concatenate((upcycle, upcycle[::-1][1:]))
+                downcycle = np.concatenate((downcycle, downcycle[::-1][1:]))
+    
+                self.allValues = np.array([self.startVar.get()])
+                dirflag = 1 if self.dirVar.get() == 'Up First' else 0
+                for ii in range(int(self.cyclesVar.get() * 2)):
+                    thiscycle = downcycle if (ii % 2 == dirflag) else upcycle
+                    self.allValues = np.append(self.allValues, thiscycle[1:])
 
-            else:
+            elif self.spacingVar.get() == 'Logarithmic':
                 try:
                     nup = self.npointsVar.get() * (np.log10(self.maxVar.get()) - np.log10(self.startVar.get())) / (
                         np.log10(self.maxVar.get()) - np.log10(self.minVar.get()))
@@ -448,24 +544,56 @@ class LoopCmd(sc.SeqCmd):
 
                 upcycle = np.logspace(np.log10(self.startVar.get()), np.log10(self.maxVar.get()), np.ceil(nup / 2))
                 downcycle = np.logspace(np.log10(self.startVar.get()), np.log10(self.minVar.get()), np.ceil(ndown / 2))
+                
+                upcycle = np.concatenate((upcycle, upcycle[::-1][1:]))
+                downcycle = np.concatenate((downcycle, downcycle[::-1][1:]))
+    
+                self.allValues = np.array([self.startVar.get()])
+                dirflag = 1 if self.dirVar.get() == 'Up First' else 0
+                for ii in range(int(self.cyclesVar.get() * 2)):
+                    thiscycle = downcycle if (ii % 2 == dirflag) else upcycle
+                    self.allValues = np.append(self.allValues, thiscycle[1:])
+            
+            elif self.spacingVar.get() == 'Sinusoidal':
+                n = np.arange(self.npointsVar.get())
+                m = self.cyclesVar.get()
+                if float(int(m))==float(m):
+                    n = np.hstack((np.tile(n, int(m)), n[0]))
+                else:
+                    n = np.hstack((np.tile(n[:-1], np.floor(m)), n[-1], n[:int(len(m)/2)]))
+                if self.dirVar.get() == 'Down First':
+                    n = n[::-1]
+                offs = (self.maxVar.get() + self.minVar.get())/2
+                amp = (self.maxVar.get() - self.minVar.get())/2
+                try:
+                    phase = np.arcsin((self.startVar.get()-offs)/amp)
+                except ZeroDivisionError:
+                    phase = 0
+                self.allValues = amp*np.sin(2*np.pi*n/self.npointsVar.get() + phase)+ offs
+                
+            elif self.spacingVar.get() == 'Uniform Random':
+                vals = np.linspace(self.minVar.get(), self.maxVar.get(), self.npointsVar.get())
+                m = self.cyclesVar.get()
+                if float(int(m))==float(m):
+                    vals = (np.tile(vals[:-1], int(m)))
+                else:
+                    vals = np.hstack((np.tile(vals[:-1], np.floor(m)), n[-1], n[:int(len(vals)/2)]))
+                self.allValues = vals
+                random.shuffle(self.allValues)
+                
+            
 
-            upcycle = np.concatenate((upcycle, upcycle[::-1][1:]))
-            downcycle = np.concatenate((downcycle, downcycle[::-1][1:]))
+        self.updatePlot()
 
-            self.allValues = np.array([self.startVar.get()])
-            dirflag = 1 if self.dirVar.get() == 'Up First' else 0
-            for ii in range(int(self.cyclesVar.get() * 2)):
-                thiscycle = downcycle if (ii % 2 == dirflag) else upcycle
-                self.allValues = np.append(self.allValues, thiscycle[1:])
-
-            while len(self.allValues) < self.npointsVar.get():
-                self.allValues = np.append(self.allValues, self.startVar.get())
 
     def updateSweepParams(self, *args):
         inst = self.instruments[self.stringInsts.index(self.instVar.get())]
         params = inst.getWCSParams()
         self.paramBox['values'] = params[:]
         self.paramBox.current(0)
+        self.updateValues()
+
+
 
     def updateWaitParams(self, *args):
         inst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
@@ -475,6 +603,8 @@ class LoopCmd(sc.SeqCmd):
             self.waitParamBox.current(params.index(self.waitParam))
         except ValueError:
             self.waitParamBox.current(0)
+        self.updateValues()
+
 
     def accept(self):
         self.updateValues()
@@ -548,8 +678,10 @@ class LoopCmd(sc.SeqCmd):
         self.modeTrace = None
         self.stopVar = None
 
+
     def isDone(self):
         return self.iteration >= len(self.allValues)
+
 
     def execute(self, fileReqQ):
         if not self.exp.isAborted():
@@ -578,7 +710,6 @@ class LoopCmd(sc.SeqCmd):
                 wParam = inst.getParam(self.waitParam)
 
             while timeElapsed <= (timeout if (timeout > 0) else 1e7):
-                counttime = polltime if self.wait == 'Condition' else 1  # how often to check conditions, default is 1s
                 if self.wait == 'Time' and self.timeout==0:
                     break
                 else:
@@ -594,10 +725,11 @@ class LoopCmd(sc.SeqCmd):
                     stableData[waitIter % datapoints] = float(measured[0])
                     waitIter += 1
                     if abs(max(stableData) - target) < stability and abs(min(stableData) - target) < stability:
-                        isStable = True
                         break
                 if self.exp.isAborted():
                     break
+
+
 
     def updateTitle(self):
         loopNum = 1
@@ -617,6 +749,8 @@ class LoopCmd(sc.SeqCmd):
                     cmd.title = 'End Loop {:d}'.format(loopNum)
                     cmd.title = hf.enumSequence(self.pos, self.title)
 
+
+
     def getMeasHeaders(self):
         headers = []
         if self.wait == 'Condition':
@@ -624,6 +758,9 @@ class LoopCmd(sc.SeqCmd):
             param = inst.getParam(self.waitParam)
             headers.append(sc.formatHeader(inst,param, param.units))
         return headers
+
+
+
 
 
 class LoopEnd(sc.SeqCmd):
@@ -636,6 +773,8 @@ class LoopEnd(sc.SeqCmd):
         if not dup:
             self.loopPos = self.app.sequence.index(self.loop)
 
+
+
     def execute(self, fileReqQ):
         if not self.loop.isDone() and not self.exp.isAborted():
             return self.app.sequence.index(self.loop)
@@ -644,8 +783,12 @@ class LoopEnd(sc.SeqCmd):
             self.loop.iteration = 0  # reset the counter for the next run!
             return None
 
+
+
     def edit(self, running=False):
         self.loop.edit(running=running)
+
+
 
     def updateTitle(self):
         loopNum = 1
@@ -655,6 +798,8 @@ class LoopEnd(sc.SeqCmd):
         self.loopPos = self.app.sequence.index(self.loop)
         self.title = 'End Loop {:d}'.format(loopNum)
         self.title = hf.enumSequence(self.pos, self.title)
+
+
 
     def getMeasHeaders(self):
         return []

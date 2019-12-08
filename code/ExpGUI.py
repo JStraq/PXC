@@ -595,7 +595,7 @@ class ExpGUI:
         indices = sorted(indices)
 
         for ii in indices:
-            if isinstance(self.app.sequence[ii], sc.LoopLoopCmd):  # if it's a loop, find its end
+            if isinstance(self.app.sequence[ii], sc.LoopCmd):  # if it's a loop, find its end
                 for jj, cmd in enumerate(self.app.sequence):
                     if isinstance(cmd, sc.LoopEnd):
                         if cmd.loop == self.app.sequence[ii]:
