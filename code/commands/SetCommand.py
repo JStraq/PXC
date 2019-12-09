@@ -433,7 +433,6 @@ class SetCmd(sc.SeqCmd):
                     if param.type == 'disc':
                         labeledVals = ["{:s} ({:s})".format(param.labels[ii], param.vals[ii]) for ii in
                                        range(len(param.vals))]  # regenerate the list of values paired with meanings
-                        print(labeledVals)
                         val = param.vals[labeledVals.index(self.selVals[ii])]   # search it to get proper value
                         self.status[2] = 'Parameter:\t{:s} = {:s}'.format(str(param), self.selVals[ii])
                         self.exp.setStatus(self.status)

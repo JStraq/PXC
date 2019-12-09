@@ -170,12 +170,11 @@ class CMeasCmd(sc.SeqCmd):
         """
         Make sure the edit dialog is large enough to accommodate its content
         """
-        print('UPDATESIZE')
+
         rowpx = self.rowheight*(self.rows+1)
         condpx = self.rowheight*3 if self.waitVar.get() == 'Time' else self.rowheight*7
         height = max((rowpx,condpx))
-        print(rowpx,condpx,height)
-        width = 550 if self.waitVar.get() == 'Time' else 830
+        width = 600 if self.waitVar.get() == 'Time' else 830
         self.window.geometry('{:d}x{:d}'.format(width,height))
         for ii in range(max(7, self.rows+1)):
             self.window.grid_rowconfigure(ii, weight=0, minsize=self.rowheight)
@@ -297,12 +296,9 @@ class CMeasCmd(sc.SeqCmd):
         """
         Change the structure of the wait half of the GUI
         """
-        print('UPDATEWAIT: {:s}'.format(self.waitVar.get()))
         self.updateSize()
         if self.waitVar.get() == 'Time':
-            print('a')
             for ii in range(len(self.labels)):
-                print('b')
                 if self.labels[ii] is not None:
                     self.labels[ii].destroy()
                     self.labels[ii] = None
@@ -313,69 +309,47 @@ class CMeasCmd(sc.SeqCmd):
                     self.units[ii].destroy()
                     self.units[ii] = None
             if self.waitParamTrace is not None:
-                print('c')
                 self.waitParamVar.trace_vdelete("w", self.waitParamTrace)
                 self.waitParamTrace = None
             if self.waitInstTrace is not None:
-                print('asdf')
                 self.waitInstVar.trace_vdelete("w", self.waitInstTrace)
                 self.waitInstTrace = None
             if self.waitParamBox is not None:
-                print('d')
                 self.waitParamBox.destroy()
                 self.waitParamBox = None
-            print('y')
 
         else:  # mode = 'Condition'
-            print('e')
             for ii in range(len(self.labels)):
-                print('f')
                 if self.labels[ii] is not None:
-                    print('g')
                     self.labels[ii].destroy()
                     self.labels[ii] = None
                 if self.boxes[ii] is not None:
-                    print('h')
                     self.boxes[ii].destroy()
                     self.boxes[ii] = None
                 if self.units[ii] is not None:
-                    print('i')
                     self.units[ii].destroy()
                     self.units[ii] = None
-            print('z')
 
             self.labels[0] = tk.Label(self.window, text='Condition:')  # change first label to proper value
             self.labels[1] = tk.Label(self.window, text='Value:')
             self.labels[2] = tk.Label(self.window, text='Stability Window: +/-')
             self.labels[3] = tk.Label(self.window, text='Stable Time:')
 
-            print('j')
             state = tk.DISABLED if self.running else tk.NORMAL
             self.boxes[0] = ttk.Combobox(self.window, textvariable=self.waitInstVar, width=20, state=state)
             self.boxes[0]['values'] = self.stringInsts[:]
-            print('k')
             try:
                 self.boxes[0].current(self.stringInsts.index(self.waitInst))
-                print('l')
             except ValueError:
-                print('m') #*
-                print(self.boxes)
-                print(self.boxes[0])
-                print(self.boxes[0]['values'])
-                print(self.stringInsts)
-                print(self.boxes[0].current(0))
                 self.boxes[0].current(0)
-                print('not dead')
 
             waitInst = self.instruments[self.stringInsts.index(self.waitInstVar.get())]
             self.waitParamBox = ttk.Combobox(self.window, textvariable=self.waitParamVar, width=20, state=state)
             self.waitParamBox['values'] = [str(pm) for pm in waitInst.getQCSParams()]
             try:
                 self.waitParamBox.current([str(pm) for pm in waitInst.getQCSParams()].index(self.waitParam))
-                print('n') #*
             except ValueError:
                 self.waitParamBox.current(0)
-                print('o')
 
             self.boxes[1] = tk.Entry(self.window, textvariable=self.targetVar, state=state)
             self.boxes[2] = tk.Entry(self.window, textvariable=self.stabilityVar, state=state)
@@ -389,21 +363,17 @@ class CMeasCmd(sc.SeqCmd):
             self.units[2] = tk.Label(self.window, text='s')
 
             for ii in range(len(self.labels)):
-                print('p')
                 self.labels[ii].grid(column=0, row=3 + ii, sticky='NSE', padx=5)
                 if ii is not 0:
-                    print('q')
                     self.boxes[ii].grid(column=1, row=3 + ii, sticky='NSEW', padx=5, columnspan=2)
                     self.boxes[ii].bind('<FocusOut>', self.updateValues)
                     self.units[ii - 1].grid(column=3, row=3 + ii, sticky='NSW', padx=5)
 
             self.boxes[0].grid(column=1, row=3, sticky='NSEW', padx=5)
             self.waitParamBox.grid(column=2, row=3, sticky='NSEW', padx=5)
-            print('r')
             if not self.running:
                 self.waitParamTrace = self.waitParamVar.trace("w", self.updateUnits)
                 self.waitInstTrace = self.waitInstVar.trace("w", self.updateWaitParams)
-                print('s')
 
         self.updateValues()
         

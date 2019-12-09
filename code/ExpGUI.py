@@ -99,11 +99,11 @@ class ExpGUI:
         self.frameUser.grid(row=0, column=0, columnspan=3, sticky='EW', padx=self.pad, pady=self.pad)
         self.frameExp = tk.Frame(self.master, height=500, width=200)
         self.frameExp.grid(row=1, column=0, sticky='NSEW', padx=self.pad, pady=self.pad)
-        self.framePlt = plt.PlotManager(self.master, 1, 1, self.exp, self.fileReqQ)
+        self.plotMan = plt.PlotManager(self.master, 1, 1, self.exp, self.fileReqQ, self.logQ)
         self.frameSeq = tk.Frame(self.master, height=500, width=200)
         self.frameSeq.grid(row=1, column=2, sticky='NSEW', padx=self.pad, pady=self.pad)
 
-        self.framePlt.plotbook.bind('<Double-1>', lambda args: self.framePlt.changePlotSettings())
+        self.plotMan.plotbook.bind('<Double-1>', lambda args: self.plotMan.changePlotSettings())
 
         ## CONTROL HOW THEY SCALE WITH THE WINDOW
         self.master.grid_columnconfigure(0, weight=1)
@@ -547,7 +547,8 @@ class ExpGUI:
         for ii, en in enumerate(enabled):
             if not en:
                 self.sequenceList.itemconfig(ii, {'fg': 'gray'})
-                
+            else:
+                self.sequenceList.itemconfig(ii, {'fg': 'black'})
                 
     def runSequence(self): 
         """
@@ -598,21 +599,22 @@ class ExpGUI:
             instproc.start()
 
             # Set up the file reading and writing process
-            self.exp.openFile()
+            self.monHeaders = self.app.getVarsList()
+            if self.exp.isFileOpen():
+                self.exp.closeFile()
+            self.plotMan.sequenceStart(filename, self.monHeaders)
             fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
             fileproc.name = 'file'
             fileproc.start()
 
-            self.framePlt.plotfile = filename
-            self.framePlt.clearPlots()
-
-            self.monHeaders = self.app.getVarsList()
+            self.plotMan.plotfile = filename
+            self.plotMan.clearPlots()
             
             self.logger.critical('sequence headers: {:s}'.format('\t'.join(self.monHeaders)))
             if len(self.monHeaders)>1:
                 self.logger.critical('requested creation of new file {:s}'.format(filename))
                 self.fileReqQ.put(fh.fileRequest('New File', args=(filename, self.monHeaders)))
-                self.framePlt.availQuants = self.monHeaders
+                self.plotMan.availQuants = self.monHeaders
             self.instReqQ.put(ih.instRequest('Run Sequence', args=()))  # starts running the commands to GPIB
 
             self.sequenceWatcher()  # instigate the watchdog
@@ -847,7 +849,7 @@ class ExpGUI:
         self.exp.abort()
 
 
-    def updatePlot(self, newSettings=False):
+    def updatePlot(self):
         """
         Updates the plots
         
@@ -859,7 +861,7 @@ class ExpGUI:
             can just append the last few datapoints for a quicker operation.
         TODO: THIS ISN'T IMPLEMENTED YET
         """
-        self.framePlt.updatePlots()
+        self.plotMan.updatePlots()
 
 
     def confirm_quit(self):
@@ -974,7 +976,6 @@ class ExpGUI:
             addrnum = re.search('::([0-9]+)::', addr).group(1)
             sortByModel[model].append(('{:s}:{:s}:{:s}'.format(name, addrnum, model),
                                        '{:s}\t{:s}\t{:s}'.format(addr, model, name)))  # get both short and long formats
-        print(sortByModel)
 
         activeByModel = {m:[] for m in reqModelCounts.keys()}
         for inst in self.app.instList:

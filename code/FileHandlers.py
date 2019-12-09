@@ -1,6 +1,7 @@
-from datetime import datetime
+import datetime
 import numpy as np
 import logging
+import tzlocal
 
 
 def fileHandler(args):
@@ -15,8 +16,9 @@ def fileHandler(args):
     logger.info('Starting File Process')
     
     dbase = DataBase(logQ)
+    fp_terminate = False
     
-    while not exp.get_killFlag():
+    while not exp.get_killFlag() and not fp_terminate:
         if not fileReqQ.empty():
             try:
                 req = fileReqQ.get()
@@ -26,6 +28,9 @@ def fileHandler(args):
             try:
                 if req.type == 'Read Latest':
                     exp.set_fileLatest(req.execute(dbase))
+                elif req.type == 'Terminate File Process':
+                    fp_terminate = True
+                    dbase.closefile()
                 else:
                     exp.set_fileAns(req.execute(dbase))
             except Exception as e:
@@ -106,6 +111,7 @@ class fileRequest:
 
         elif self.type == 'Read All':
             hardlimit = 2000
+            localtz = tzlocal.get_localzone()
 
             (xparam, yparams) = self.args
             if dbase.file is not None:
@@ -126,11 +132,15 @@ class fileRequest:
                     for ii, yindex in enumerate(yindices):
                         if (line[xindex] != '-') and (line[yindex] != '-'):
                             if xparam == 'Timestamp':
-                                xdata[ii].append(datetime.strptime(line[xindex], '%Y-%m-%d %H:%M:%S.%f'))
+                                timestamp = datetime.datetime.strptime(line[xindex], '%Y-%m-%d %H:%M:%S.%f')
+                                timestamp = timestamp.replace(tzinfo=localtz)
+                                xdata[ii].append(timestamp)
                             else:
                                 xdata[ii].append(float(line[xindex]))
                             if yparams[ii] == 'Timestamp':
-                                ydata[ii].append(datetime.strptime(line[yindex], '%Y-%m-%d %H:%M:%S.%f'))
+                                timestamp = datetime.datetime.strptime(line[xindex], '%Y-%m-%d %H:%M:%S.%f')
+                                timestamp = timestamp.replace(tzinfo=localtz)
+                                ydata[ii].append(timestamp)
                             else:
                                 ydata[ii].append(float(line[yindex]))
 

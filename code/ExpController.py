@@ -1,9 +1,7 @@
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
-import LogHandlers as lh
-import logging as lg
-import os
-from datetime import datetime as dt
+import datetime
+from pytz import timezone
 
 class ExpController:
     """
@@ -82,6 +80,9 @@ class ExpController:
         self.manager = mp.Manager()
         self.q = self.manager.Queue()
         self.filepath = ''
+        
+        self.LOCAL_TIMEZONE = datetime.datetime.now(datetime.timezone(datetime.timedelta(0))).astimezone().tzinfo
+
 
         self.killFlag = False    # for exiting the entire program
         self.abortFlag = False   # for stopping a sequence
@@ -113,6 +114,11 @@ class ExpController:
         self.gridStatus = False
         self.filename = ''
         
+    def getTZ(self):
+        return self.LOCAL_TIMEZONE
+    
+    def isRunning(self):
+        return self.running
         
     def isFileOpen(self):
         return self.fileOpen

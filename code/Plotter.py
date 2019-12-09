@@ -5,13 +5,23 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 import FileHandlers as fh
 import HelperFunctions as hf
-from datetime import datetime
 import multiprocessing as mp
 import matplotlib.dates as mdates
+import logging
+import tzlocal
+
+
 
 class Plot:
+    """
+    Class for storing all of the relevant data and configuration for plotting.
+    This is basically just a glorified dictionary.
+    """
+    
     def __init__(self):
 
+        self.xdata = [[]]
+        self.ydata = [[]]
         self.xparam = None
         self.yparams = [None]
         self.xaxisname = ''
@@ -32,8 +42,6 @@ class Plot:
         self.labelsize = 14
         self.ticksize = 12
 
-        self.alldata = [([],[])]
-
         self.maxpoints = 2000
         self.filtervars = []
         self.filterlims = []
@@ -47,19 +55,30 @@ class Plot:
         self.columns = 1
         self.isSetup = False
 
+
+
 class PlotManager:
-    def __init__(self, master, row, col, exp, fileReqQ):
+    """
+    Class which knows how to handle several plots and display them on the GUI
+    """
+    def __init__(self, master, row, col, exp, fileReqQ, logQ):
         self.plotfile = 'None selected'
         self.exp = exp
         self.fileReqQ = fileReqQ
+        self.logQ = logQ
         self.master = master
         self.plotbook = ttk.Notebook(self.master)
         self.plotbook.grid(row=row, column=col, sticky='NSEW', padx=10, pady=10)
         self.plottabs = [tk.Frame(self.plotbook)]
         self.availQuants = []
+        
+        self.logger = logging.getLogger('plot')
+        self.logger.addHandler(logging.handlers.QueueHandler(logQ))
 
         self.figures = [Figure(figsize=(7, 7), dpi=75)]
         self.subplots = [self.figures[0].add_subplot(111)]
+        
+        self.lines = [self.subplots[0].plot([],[])]
         self.twinaxes = [None]
 
         self.plotCanvases = [FigureCanvasTkAgg(self.figures[0], self.plottabs[0])]
@@ -78,9 +97,9 @@ class PlotManager:
         self.plottabs[0].grid_rowconfigure(1, weight=1)
         self.plottabs[0].grid_columnconfigure(0, weight=1)
 
-        self.defaultColors = ['blue', 'orange', 'green', 'red', 'purple',
+        self.defaultColors = ['black', 'blue', 'orange', 'green', 'red', 'purple',
                               'brown', 'pink', 'grey', 'yellow', 'cyan']
-        self.colorRGBs =  ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+        self.colorRGBs =  ['#000000', '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
         self.defaultLines = ['-', '-.', '--', ':', 'none']
@@ -88,14 +107,51 @@ class PlotManager:
         self.defaultLineWidth = 3
         self.defaultMarkerSize = 10
 
+        self.xaxisVar = tk.StringVar()
+        self.yaxisVars = [tk.StringVar()]
+        self.yaxisSelects = []
+        self.yaxSelVars = []
+        self.yaxisBoxes = []
+        self.yaxisDels = []
+        self.yaxColors = []
+        self.yaxColorVars = []
+        self.yaxLines = []
+        self.yaxLineVars = []
+        self.yaxMarkers = []
+        self.yaxMarkerVars = []
+        
+        self.autoXVar = tk.BooleanVar()
+        self.autoY1Var = tk.BooleanVar()
+        self.autoY2Var = tk.BooleanVar()
+
+
     def clearPlots(self):
-        for ii,subplot in enumerate(self.subplots):
-            subplot.clear()
-            self.plots[ii].alldata = [([],[]) for y in self.plots[ii].yparams]
+        """
+        Clear all of the subplots on a given page
+        """
+        self.xdata = []
+        self.ydata = []
+        N = len(self.subplots)
+        for ii in range(N):
+            self.subplots[ii].clear()
+        self.subplots = []
+        self.lines = []
+        for ii in range(N):
+
+            self.xdata.append([])
+            self.ydata.append([])
+            self.subplots.append(self.figures[0].add_subplot(111))
+            self.lines.append(self.subplots[ii].plot([],[]))
             self.plotCanvases[ii].draw()
 
+
+
     def changePlotSettings(self):
-#        self.log.info('Change Plot Settings:')
+        """
+        Open a GUI to edit plot settings.
+        """
+        self.running = self.exp.isRunning()
+        self.logger.info('Change Plot Settings:')
         index = 0
 
         self.window = tk.Toplevel(self.master)
@@ -107,7 +163,9 @@ class PlotManager:
         tk.Label(self.window, text='Data File:').grid(row=0, column=0, sticky='NSE', padx=5)
         self.pathLabel = tk.Label(self.window, text=self.plotfile)
         self.pathLabel.grid(row=0, column=1, columnspan=3, sticky='NSW')
-        self.changePath = tk.Button(self.window, text='Edit', command=self.chooseDataFile)
+        
+        state = tk.DISABLED if self.running else tk.NORMAL
+        self.changePath = tk.Button(self.window, text='Edit', command=self.chooseDataFile, state=state)
         self.changePath.grid(row=0, column=4, columnspan=2, sticky='NSE')
 
         self.paramFrame = tk.Frame(self.window)
@@ -132,7 +190,8 @@ class PlotManager:
         self.yaxMarkers = []
         self.yaxMarkerVars = []
 
-        self.xaxisBox = ttk.Combobox(self.paramFrame, textvariable=self.xaxisVar,width=50)
+        state = tk.DISABLED if len(self.availQuants)==0 else tk.NORMAL
+        self.xaxisBox = ttk.Combobox(self.paramFrame, textvariable=self.xaxisVar,width=50, state=state)
         self.xaxisBox.grid(row=0, column=1, sticky='NSEW')
         self.addYPButton = tk.Button(self.paramFrame, text='...', command=self.createRow)
 
@@ -141,17 +200,24 @@ class PlotManager:
 
         if self.plotfile != 'None selected':
             self.xaxisBox['values'] = self.availQuants
-            self.yaxisBoxes[0]['values'] = self.availQuants
-
-        if self.plots[0].xparam is not None:
-            self.xaxisVar.set(self.plots[0].xparam)
-            self.yaxisVars[0].set(self.plots[0].yparams[0])
-        else:
-            try:
-                self.xaxisBox.current(0)
-                self.yaxisBoxes[0].current(0)
-            except:
-                pass
+            self.yaxisBoxes[0]['values'] = self.availQuants[1:]
+        try:                
+            if self.xaxisVar.get() not in self.availQuants:
+                self.xaxisVar.set(self.availQuants[0])
+            if self.yaxisVars[0].get() not in self.availQuants[1:]:
+                self.yaxisVars[0].set(self.availQuants[1])
+    
+            if self.plots[0].xparam is not None:
+                self.xaxisVar.set(self.plots[0].xparam)
+                self.yaxisVars[0].set(self.plots[0].yparams[0])
+            else:
+                try:
+                    self.xaxisBox.current(0)
+                    self.yaxisBoxes[0].current(0)
+                except:
+                    pass
+        except IndexError:
+            pass
 
         tk.Label(self.window, text='Autoscale X:').grid(row=2, column=0, sticky='NSE')
         tk.Label(self.window, text='Autoscale Y1:').grid(row=2, column=2, sticky='NSE')
@@ -232,23 +298,28 @@ class PlotManager:
         hf.centerWindow(self.window)
         self.master.wait_window(self.window)
         
+    
     def createRow(self):
+        """
+        Create a new row in order to plot an extra signal
+        """
         size = len(self.yaxisBoxes)
         if size is None:
             size = 0
-
+        
+        state = tk.DISABLED if len(self.availQuants)==0 else tk.NORMAL
         self.yaxisVars.append(tk.StringVar())
         self.yaxSelVars.append(tk.BooleanVar())
-        self.yaxisBoxes.append(ttk.Combobox(self.paramFrame, textvariable=self.yaxisVars[-1], width=50))
+        self.yaxisBoxes.append(ttk.Combobox(self.paramFrame, textvariable=self.yaxisVars[-1], width=50, state=state))
         self.yaxisBoxes[-1].grid(row=size+1, column=1, sticky='NSEW')
-        self.yaxisBoxes[-1]['values'] = self.availQuants
+        self.yaxisBoxes[-1]['values'] = self.availQuants[1:]
         if size>0:
             self.yaxisDels.append(tk.Button(self.paramFrame, text='X', command=lambda x=size: self.deleteRow(x)))
             self.yaxisDels[-1].grid(row=size+1, column=6, sticky='NSEW')
         try:
             if len(self.plots[0].yparams)>=size-1:
                 if self.plots[0].yparams[size] is not None:
-                    self.yaxisBoxes[-1].current(self.availQuants.index(self.plots[0].yparams[size]))
+                    self.yaxisBoxes[-1].current(self.availQuants[1:].index(self.plots[0].yparams[size]))
             else:
                 self.yaxisBoxes[-1].current(0)
         except (ValueError, IndexError):
@@ -291,8 +362,20 @@ class PlotManager:
 
         self.addYPButton.grid(row=size+2, column=1,sticky='NSEW')
         self.paramFrame.grid_rowconfigure(size+2, weight=1)
+        
+        self.plots[0].xdata.append([])
+        self.plots[0].ydata.append([])
+
 
     def deleteRow(self, row):
+        """
+        Remove a row and the related signal
+        
+        Parameters
+        ----------
+        row : int
+            which row to remove
+        """
         self.yaxisSelects[row].destroy()
         self.yaxisBoxes[row].destroy()
         self.yaxisDels[-1].destroy()
@@ -322,8 +405,15 @@ class PlotManager:
 
         size = len(self.yaxisBoxes)
         self.addYPButton.grid(row=size + 2, column=1, sticky='NSEW')
+        del self.plots[0].xdata[row]
+        del self.plots[0].ydata[row]
+
 
     def savePlotSettings(self):
+        """
+        Close the dialog and pass the settings into the main GUI
+        """
+        self.logger.critical('Saving plot settings')
         self.plots[0].xparam = self.xaxisBox.get()
         self.plots[0].yparams = [yb.get() for yb in self.yaxisBoxes]
         self.plotfile = self.pathLabel['text']
@@ -338,20 +428,30 @@ class PlotManager:
         self.plots[0].autoy2 = self.autoY2Var.get()
 
         self.plots[0].isSetup = True
-        self.updatePlots(newSettings=True)
+        self.rebuildPlots()
         self.window.destroy()
-        
-#        self.log.info(str(self.plots[0].__dict__))
+
 
     def chooseDataFile(self):
+        """
+        Select a new data file to plot
+        """
         self.plotFileName = filedialog.askopenfilename(filetypes=(("Data Files", "*.dat"), ("All files", "*.*")))
+        
+        self.xaxisBox.state = tk.NORMAL
+        for yb in self.yaxisBoxes:
+            yb.state = tk.NORMAL
         if self.plotFileName != '':
             self.pathLabel['text'] = self.plotFileName
 
             if not self.exp.isFileOpen():
                 self.exp.openFile()
-                fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
-                fileproc.start()
+            else:
+                self.exp.closeFile()
+                self.fileReqQ.put(fh.fileRequest('Terminate File Process'))
+            fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
+            fileproc.name = 'pfile'
+            fileproc.start()
 
             self.fileReqQ.put(fh.fileRequest('Open File', args=self.plotFileName))
             self.fileReqQ.join()
@@ -362,158 +462,268 @@ class PlotManager:
             if self.xaxisVar.get() not in self.availQuants:
                 self.xaxisBox.current(0)
             for ii, yaB in enumerate(self.yaxisBoxes):
-                yaB['values'] = self.availQuants
-                if self.yaxisVars[ii] not in self.availQuants:
+                yaB['values'] = self.availQuants[1:]
+                if self.yaxisVars[ii] not in self.availQuants[1:]:
                     self.yaxisBoxes[ii].current(0)
+
+
+    def sequenceStart(self, filename, headers):
+        """
+        Close any old files and start a new one: while the sequence runs,
+        only the active file can be plotted.
+        
+        Parameters
+        ----------
+        filename : str
+            The file which is actively being written
+        headers : list of str
+            The column headers in this file.s
+        """
+        if self.exp.isFileOpen():
+            self.exp.closeFile()
+            self.fileReqQ.put(fh.fileRequest('Terminate File Process'))
+        self.fileReqQ.join()
+        self.availQuants = hf.plottable(headers)
+        
+        self.isSetup = False
+        self.plotFileName = filename
+        self.availQuants = headers[:]
+        if self.xaxisVar.get() not in self.availQuants:
+            self.xaxisVar.set(self.availQuants[0])
+            self.plots[0].xparam = self.xaxisVar.get()
+        for ii, yav in enumerate(self.yaxisVars):
+            if self.yaxisVars[ii] not in self.availQuants:
+                try:
+                    self.yaxisVars[ii].set(self.availQuants[1])
+                except IndexError:
+                    self.logger.critical('file only has timestamp?')
+#            self.plots[0].yparams.append(self.yaxisVars[ii].get())
+
 
     def addTab(self):
         pass
 
+
     def delTab(self):
         pass
 
-    def updatePlots(self, newSettings=False):
-#        self.log.info('Updating Plots')
-        if self.plots[0].isSetup:
-            if not self.plots[0].autox:
-                xlim = self.subplots[0].get_xlim()
-            if not self.plots[0].autoy1:
-                y1lim = self.subplots[0].get_ylim()
-            if not self.plots[0].autoy2:
-                if self.twinaxes[0] is not None:
-                    y2lim = self.subplots[0].get_ylim()
 
+    def rebuildPlots(self)    :
+        """
+        Start over: reread all of the data, relabel everything,
+        """
+        self.logger.critical('Rebuilding Plots')
+        self.clearPlots()
+        self.plots[0].isSetup = False
+        self.plots[0].xparam = self.xaxisVar.get()
+        self.plots[0].yparams = [yv.get() for yv in self.yaxisVars]
+        
+        if True in self.plots[0].onRightAx:
+            self.twinaxes[0] = self.subplots[0].twinx()
+            
+        if self.plots[0].xparam == 'Timestamp':
+            self.subplots[0].xaxis_date()
+            formatter = mdates.DateFormatter("%H:%M:%S", tz=tzlocal.get_localzone())
+            self.subplots[0].xaxis.set_major_formatter(formatter)
+            for tick in self.subplots[0].get_xticklabels():
+                tick.set_rotation(45)
+        
 
-            if True in self.plots[0].onRightAx:
-                if self.twinaxes[0] is None:
-                    self.twinaxes[0] = self.subplots[0].twinx()
-            if self.plots[0].xparam != '':
-                if not self.exp.isFileOpen():
-                    self.exp.openFile()
-                    fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ)])
-                    fileproc.start()
-                index = self.plotbook.index(self.plotbook.select())
-                if newSettings or len(self.plots[index].alldata[index][0]) > 2000:  # reread entire file to refresh the data to match the new settings
+        self.logger.critical('new settings: reading entire file')
+        self.fileReqQ.put(fh.fileRequest('Read All', args=(self.plots[0].xparam, self.plots[0].yparams)))
+        self.fileReqQ.join()
+        
+        try:
+            alldata = self.exp.get_fileAns()
+            if alldata is [None]:
+                alldata = [([],[])]
+        except TypeError as e:
+            self.logger.warning("Problem reading file while rebuilding plots")
+            self.logger.exception(e)
+            alldata = [([],[])]
+            
+        if alldata != [None]:
+            for ii, yax in enumerate(self.plots[0].yparams):
+                try:
+                    self.plots[0].xdata[ii] = alldata[ii][0]
+                    self.plots[0].ydata[ii] = alldata[ii][1]
+                except TypeError:
+                    print('failed to read in alldata')
+                self.subplots[0].plot(self.plots[0].xdata[ii], self.plots[0].ydata[ii])
+        self.plotCanvases[0].draw()
+            
 
-                    self.fileReqQ.put(fh.fileRequest('Read All', args=(self.plots[index].xparam, self.plots[index].yparams)))
-                    self.fileReqQ.join()
+    def updatePlots(self):
+        """
+        Grab the most recent data and append it to the plot
+        """
+        self.plots[0].xparam = self.xaxisVar.get()
+        self.plots[0].yparams = [yv.get() for yv in self.yaxisVars]
+        
+        self.fileReqQ.put(fh.fileRequest('Read Unread', args=(self.plots[0].xparam, self.plots[0].yparams)))
+        self.fileReqQ.join()
+        unread = self.exp.get_fileAns()
+        self.logger.critical('Read all the unread')
+        
+        
+        xp = self.plots[0].xparam
+        if unread != []:
+            print('updating...')
+            print(unread)
+            for record in unread:
+                print(record)
+                for ii, yp in enumerate(self.plots[0].yparams):
+                    
+                    self.plots[0].xdata[ii].append(record[xp])
+                    self.plots[0].ydata[ii].append(record[yp])
 
-                    try:
-                        self.plots[0].alldata = self.exp.get_fileAns()
-                    except TypeError:
-                        self.plots[0].alldata = [([],[])]
-
-                else:  # just read whatever is in the unread buffer
-                    self.fileReqQ.put(fh.fileRequest('Read Unread', args=(self.plots[index].xparam, self.plots[index].yparams)))
-                    self.fileReqQ.join()
-                    unread = self.exp.get_fileAns()
-
-                    if unread is not None and self.plots[0].xparam is not None and self.plots[0].yparams[0] is not None:
-                        if len(unread)>0:
-                            for record in unread:
-                                keys = list(record.keys())
-                                for ii, yp in enumerate(self.plots[0].yparams):
-                                    if yp in keys:
-                                        try:
-                                            if (record[self.plots[0].xparam] != '-') and (record[yp] != '-'):
-                                                if self.plots[0].xparam == 'Timestamp':
-                                                    try:
-                                                        record[self.plots[0].xparam] = datetime.strptime(record[self.plots[0].xparam], '%Y-%m-%d %H:%M:%S.%f')
-                                                    except TypeError:
-                                                        pass
-                                                if yp == 'Timestamp':
-                                                    try:
-                                                        record[yp] = datetime.strptime(record[yp], '%Y-%m-%d %H:%M:%S.%f')
-                                                    except TypeError:
-                                                        pass
-                                                self.plots[0].alldata[ii][0].append(record[self.plots[0].xparam])
-                                                self.plots[0].alldata[ii][1].append(record[yp])
-                                        except KeyError:
-                                            pass
-
-                self.subplots[index].clear()
-                if self.twinaxes[index] is not None:
-                    self.twinaxes[index].clear()
-                nright = 0
-                nleft = 0
-                rightparams = []
-                leftparams = []
-                if self.plots[0].alldata is not None:
-                    for ii, ad in enumerate(self.plots[0].alldata):
-                        xx, yy = ad
-                        if self.plots[0].onRightAx[ii]:
-                            nright += 1
-                            rightparams.append(self.plots[0].yparams[ii])
-                            self.twinaxes[index].plot(xx,yy, linewidth=self.defaultLineWidth,
-                                                      linestyle=self.plots[0].selectedLines[ii],
-                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
-                                                      marker = self.plots[0].selectedMarkers[ii],
-                                                      markersize = self.defaultMarkerSize,
-                                                      label=hf.shortenParam(self.plots[0].yparams[ii]) + ' (R)')
-                            self.subplots[index].plot([], linewidth=self.defaultLineWidth,
-                                                      linestyle=self.plots[0].selectedLines[ii],
-                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
-                                                      marker = self.plots[0].selectedMarkers[ii],
-                                                      markersize = self.defaultMarkerSize,
-                                                      label=hf.shortenParam(self.plots[0].yparams[ii])+' (R)')
-                        else:
-                            nleft += 1
-                            leftparams.append(self.plots[0].yparams[ii])
-                            self.subplots[index].plot(xx, yy, linewidth=self.defaultLineWidth,
-                                                      linestyle=self.plots[0].selectedLines[ii],
-                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
-                                                      marker=self.plots[0].selectedMarkers[ii],
-                                                      markersize=self.defaultMarkerSize,
-                                                      label=hf.shortenParam(self.plots[0].yparams[ii]))
-                            if self.twinaxes[index] is not None:
-                                self.twinaxes[index].plot([], linewidth=self.defaultLineWidth,
-                                                          linestyle=self.plots[0].selectedLines[ii],
-                                                          color=self.colorRGBs[
-                                                              self.defaultColors.index(self.plots[0].selectedColors[ii])],
-                                                          marker=self.plots[0].selectedMarkers[ii],
-                                                          markersize=self.defaultMarkerSize,
-                                                          label=hf.shortenParam(self.plots[0].yparams[ii]))
-
-                    # Manual Scaling?
-                    if not self.plots[0].autox:
-                        self.subplots[0].set_xlim(xlim)
-                    if not self.plots[0].autoy1:
-                        self.subplots[0].set_ylim(y1lim)
-                    if not self.plots[0].autoy2:
-                        if self.twinaxes[0] is not None:
-                            self.twinaxes[0].set_ylim(y2lim)
-
-                    # Get everything labeled
-                    if nright+nleft > 1:
-                        if nright>0:
-                            self.twinaxes[index].legend()
-                        else:
-                            self.subplots[index].legend()
-                    self.subplots[index].set_xlabel(self.plots[0].xparam, fontsize=self.plots[0].labelsize)
-
-                    # Format timestamp axes
-                    if self.plots[0].xparam == 'Timestamp':
-                        self.subplots[index].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
-                        for tick in self.subplots[index].get_xticklabels():
-                            tick.set_rotation(45)
-
-                    if nleft == 1:
-                        self.subplots[index].set_ylabel(leftparams[0], fontsize=self.plots[0].labelsize)
-                    elif nleft > 1:
-                        units = [hf.getParamUnits(yp)for yp in leftparams]
-                        if len(list(set(units)))==1:
-                            self.subplots[index].set_ylabel(units[0], fontsize=self.plots[0].labelsize)
-                        else:
-                            self.subplots[index].set_ylabel(', '.join(set(units)), fontsize=self.plots[0].labelsize)
-
-                    if nright == 1:
-                        self.twinaxes[index].set_ylabel(rightparams[0], fontsize=self.plots[0].labelsize)
-                    elif nright > 1:
-                        units = [hf.getParamUnits(yp) for yp in leftparams]
-                        if len(list(set(units))) == 1:
-                            self.twinaxes[index].set_ylabel(units[0], fontsize=self.plots[0].labelsize)
-                        else:
-                            self.twinaxes[index].set_ylabel(', '.join(set(units)), fontsize=self.plots[0].labelsize)
-                    self.figures[index].tight_layout()
-                    self.plotCanvases[index].draw()                
-                        
+        
+        for ii, yp in enumerate(self.plots[0].yparams):
+            self.lines[0][ii].set_data(self.plots[0].xdata[ii], self.plots[0].ydata[ii])
+        
+        self.plotCanvases[0].draw()
+        self.plotCanvases[0].flush_events()
+                    
+#            if self.plots[0].xparam in self.availQuants:
+#                index = self.plotbook.index(self.plotbook.select())
+#                try:
+#                    if newSettings or len(self.plots[0].alldata[0][0]) > 2000:  # reread entire file to refresh the data to match the new settings
+#                        self.logger.critical('new settings: reading entire file')
+#    
+#                        self.fileReqQ.put(fh.fileRequest('Read All', args=(self.plots[index].xparam, self.plots[index].yparams)))
+#                        self.fileReqQ.join()
+#    
+#                        try:
+#                            alldata = self.exp.get_fileAns()
+#                        except TypeError as e:
+#                            self.logger.warning("Problem reading file while updating plots")
+#                            self.logger.exception(e)
+#                            alldata = [([],[])]
+#    
+                    
+                    
+                    
+#                    else:  # just read whatever is in the unread buffer
+#                        self.fileReqQ.put(fh.fileRequest('Read Unread', args=(self.plots[index].xparam, self.plots[index].yparams)))
+#                        self.fileReqQ.join()
+#                        unread = self.exp.get_fileAns()
+#                        self.logger.critical('Read all the unread')
+#    
+#                        if (unread is not None) and (self.plots[0].xparam is not None) and (self.plots[0].yparams[0] is not None):
+#                            if len(unread)>0:
+#                                for record in unread:
+#                                    keys = list(record.keys())
+#                                    for ii, yp in enumerate(self.plots[0].yparams):
+#                                        if yp in keys:
+#                                            try:
+#                                                if (record[self.plots[0].xparam] != '-') and (record[yp] != '-'):
+#                                                    print('a')
+#                                                    if self.plots[0].xparam != 'Timestamp':
+#                                                        print('b')
+#                                                        record[self.plots[0].xparam] = float(record[self.plots[0].xparam])
+#                                                        print('c')
+#                                                    alldata[ii][0].append(record[self.plots[0].xparam])
+#                                                    print('d')
+#                                                    if yp != 'Timestamp':
+#                                                        print('e')
+#                                                        record[yp] = float(record[yp])
+#                                                        print('f')
+#                                                    alldata[ii][1].append(record[yp])
+#                                                    print('g')
+#                                            except KeyError:
+#                                                self.logger.critical('KeyError')
+#                except TypeError as e:
+#                    print(self.plots[0])
+#                    print(self.plots[0].alldata[0])
+#                    self.logger.critical(e)
+#
+#                self.subplots[index].clear()
+#                if self.twinaxes[index] is not None:
+#                    self.twinaxes[index].clear()
+#                nright = 0
+#                nleft = 0
+#                rightparams = []
+#                leftparams = []
+#                if alldata is not None:
+#                    for ii, ad in enumerate(alldata):
+#                        xx, yy = ad
+##                        print(xx[-1])
+#                        
+#                        if self.plots[0].onRightAx[ii]:
+#                            nright += 1
+#                            rightparams.append(self.plots[0].yparams[ii])
+#                            self.twinaxes[index].plot(xx,yy, linewidth=self.defaultLineWidth,
+#                                                      linestyle=self.plots[0].selectedLines[ii],
+#                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
+#                                                      marker = self.plots[0].selectedMarkers[ii],
+#                                                      markersize = self.defaultMarkerSize,
+#                                                      label=hf.shortenParam(self.plots[0].yparams[ii]) + ' (R)')
+#                            self.subplots[index].plot([], linewidth=self.defaultLineWidth,
+#                                                      linestyle=self.plots[0].selectedLines[ii],
+#                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
+#                                                      marker = self.plots[0].selectedMarkers[ii],
+#                                                      markersize = self.defaultMarkerSize,
+#                                                      label=hf.shortenParam(self.plots[0].yparams[ii])+' (R)')
+#                        else:
+#                            nleft += 1
+#                            leftparams.append(self.plots[0].yparams[ii])
+#                            self.subplots[index].plot(xx, yy, linewidth=self.defaultLineWidth,
+#                                                      linestyle=self.plots[0].selectedLines[ii],
+#                                                      color=self.colorRGBs[self.defaultColors.index(self.plots[0].selectedColors[ii])],
+#                                                      marker=self.plots[0].selectedMarkers[ii],
+#                                                      markersize=self.defaultMarkerSize,
+#                                                      label=hf.shortenParam(self.plots[0].yparams[ii]))
+#                            if self.twinaxes[index] is not None:
+#                                self.twinaxes[index].plot([], linewidth=self.defaultLineWidth,
+#                                                          linestyle=self.plots[0].selectedLines[ii],
+#                                                          color=self.colorRGBs[
+#                                                              self.defaultColors.index(self.plots[0].selectedColors[ii])],
+#                                                          marker=self.plots[0].selectedMarkers[ii],
+#                                                          markersize=self.defaultMarkerSize,
+#                                                          label=hf.shortenParam(self.plots[0].yparams[ii]))
+#
+#                    # Manual Scaling?
+#                    if not self.plots[0].autox:
+#                        self.subplots[0].set_xlim(xlim)
+#                    if not self.plots[0].autoy1:
+#                        self.subplots[0].set_ylim(y1lim)
+#                    if not self.plots[0].autoy2:
+#                        if self.twinaxes[0] is not None:
+#                            self.twinaxes[0].set_ylim(y2lim)
+#
+#                    # Get everything labeled
+#                    if nright+nleft > 1:
+#                        if nright>0:
+#                            self.twinaxes[index].legend(framealpha=1)
+#                        else:
+#                            self.subplots[index].legend(framealpha=1)
+#                    self.subplots[index].set_xlabel(self.plots[0].xparam, fontsize=self.plots[0].labelsize)
+#
+##                     Format timestamp axes
+#                    if self.plots[0].xparam == 'Timestamp':                        
+#                        self.subplots[0].xaxis_date()
+#                        formatter = mdates.DateFormatter("%H:%M:%S", tz=tzlocal.get_localzone())
+#                        self.subplots[0].xaxis.set_major_formatter(formatter)
+#                        for tick in self.subplots[0].get_xticklabels():
+#                            tick.set_rotation(45)                        
+#
+#                    if nleft == 1:
+#                        self.subplots[index].set_ylabel(leftparams[0], fontsize=self.plots[0].labelsize)
+#                    elif nleft > 1:
+#                        units = [hf.getParamUnits(yp)for yp in leftparams]
+#                        if len(list(set(units)))==1:
+#                            self.subplots[index].set_ylabel(units[0], fontsize=self.plots[0].labelsize)
+#                        else:
+#                            self.subplots[index].set_ylabel(', '.join(set(units)), fontsize=self.plots[0].labelsize)
+#
+#                    if nright == 1:
+#                        self.twinaxes[index].set_ylabel(rightparams[0], fontsize=self.plots[0].labelsize)
+#                    elif nright > 1:
+#                        units = [hf.getParamUnits(yp) for yp in leftparams]
+#                        if len(list(set(units))) == 1:
+#                            self.twinaxes[index].set_ylabel(units[0], fontsize=self.plots[0].labelsize)
+#                        else:
+#                            self.twinaxes[index].set_ylabel(', '.join(set(units)), fontsize=self.plots[0].labelsize)
+#                    self.figures[index].tight_layout()
+#                    self.plotCanvases[index].draw()                
+#                        

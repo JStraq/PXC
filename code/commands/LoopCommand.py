@@ -208,7 +208,10 @@ class LoopCmd(sc.SeqCmd):
         self.subplot.plot(self.allValues, 'ko-')
         inst = self.instruments[self.stringInsts.index(self.instVar.get())]
         param = inst.getParam(self.paramVar.get())
-        self.subplot.set_ylabel('{:s}-{:s} ({:s})'.format(inst.name, param.name, param.units))
+        try:
+            self.subplot.set_ylabel('{:s}-{:s} ({:s})'.format(inst.name, param.name, param.units))
+        except:
+            self.subplot.set_ylabel('')
         if self.spacingVar.get() == 'Logarithmic':
             self.subplot.set_yscale('log')
         else:

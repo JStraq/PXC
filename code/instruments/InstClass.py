@@ -11,7 +11,6 @@ class InstRef():
         if self.name is not None:
             return '{:s}:{:s}:{:s}'.format(self.name, self.address[7:9].strip(':'), self.model)
         else:
-            # return '{:s} -- {:s}'.format(self.address, self.model)
             return '{:s}:{:s}'.format(self.address[7:9].strip(':'), self.model)
 
     def __repr__(self):
@@ -167,14 +166,14 @@ class Instrument(metaclass=abc.ABCMeta):
                 try:
                     if attempts > 0:
                         self.visa.clear()
-                    print(thisparam.query, end='  --  ')
+#                    print(thisparam.query, end='  --  ')
                     out = self.visa.query(thisparam.query).strip()
                     if thisparam.type == 'disc':
                         out = '{:s},{:s}'.format(out, thisparam.labels[thisparam.vals.index(str(int(out)))])  # forces '00' to match '0'
-                        print(out)
+#                        print(out)
                         return [out]
                     else:
-                        print(out)
+#                        print(out)
                         out = out.split(',')
                         for ii,val in enumerate(out):
                             try:
@@ -192,7 +191,7 @@ class Instrument(metaclass=abc.ABCMeta):
                     if attempts < limit:
                         print("Received unexpected value for discrete parameter, retrying:")
                         out = (out, 'Unknown')
-                        print(out)
+#                        print(out)
                         attempts += 1
                     else:
                         return "Received strange data too many times!:" + out
