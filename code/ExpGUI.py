@@ -99,7 +99,7 @@ class ExpGUI:
         self.frameUser.grid(row=0, column=0, columnspan=3, sticky='EW', padx=self.pad, pady=self.pad)
         self.frameExp = tk.Frame(self.master, height=500, width=200)
         self.frameExp.grid(row=1, column=0, sticky='NSEW', padx=self.pad, pady=self.pad)
-        self.plotMan = plt.PlotManager(self.master, 1, 1, self.exp, self.fileReqQ, self.logQ)
+        self.plotMan = plt.PlotManager(self.master, self.exp, self.fileReqQ, self.logQ)
         self.frameSeq = tk.Frame(self.master, height=500, width=200)
         self.frameSeq.grid(row=1, column=2, sticky='NSEW', padx=self.pad, pady=self.pad)
 

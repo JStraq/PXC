@@ -298,7 +298,11 @@ class DataBase:
         unread : list of dict
             All unread records
         """
+        localtz = tzlocal.get_localzone()
         unread = self.unread[:]
+        N = len(unread)
+        for ii in range(N):
+            unread[ii]['Timestamp'] = datetime.datetime.strptime(unread[ii]['Timestamp'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=localtz)
         self.unread = []
         return unread
 
