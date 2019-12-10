@@ -1,2 +1,0 @@
-PXC Development Overview
-========================

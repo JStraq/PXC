@@ -49,6 +49,7 @@ Everything in this is open source, and makes use of the packages below.
 * Numpy
 * Pyvisa
 * Tkinter
+* tzlocal
 * Sphinx (documentation)
 
 

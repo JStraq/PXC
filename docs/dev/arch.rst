@@ -1,7 +1,9 @@
 PXC Architecture
 ================
 
-This page describes the basic architecture of the PXC program.
+This page describes the basic architecture of the PXC program, and this whole section gives you a really brief intro to how the code is set up.  The nitty-gritty class/function level documentation is in the next major section, :doc:`../funcs`.
+
+I know for a fact that all of the packages and python features are documented online, though, since I relied heavily on them while building this.
 
 Initialization
 --------------
@@ -44,29 +46,18 @@ When the user presses the "Run Sequence" button, things get a bit more complicat
 
 * Kick off two new processes:
 
-	- The first one executes a function called ``instHandler``, which lives in the module of the same name.
-	This function takes the settings in the ``Apparatus`` object as defined by the user through the GUI [#]_ and basically just runs the sequence.
-	By "runs the sequence" I mean that the ``Apparatus`` will walk through the sequence of commands item by item, jumping around to handle loops or skipping disabled steps as required, and execute the ``SeqCmd.execute()`` function for each one.
-	The sequence command subclasses themselves, defined in their own modules in the ``code/commands/`` subdirectory, describe the *actual* functionality of each step.
-	The ``instHandler`` process is completely autonomous and communicates with the instruments as required.
-	This runs until it finishes the sequence, until the sequence is aborted, or until the GUI is closed which kills the program.
+	- The first one executes a function called ``instHandler``, which lives in the module of the same name.	This function takes the settings in the ``Apparatus`` object as defined by the user through the GUI [#]_ and basically just runs the sequence.	By "runs the sequence" I mean that the ``Apparatus`` will walk through the sequence of commands item by item, jumping around to handle loops or skipping disabled steps as required, and execute the ``SeqCmd.execute()`` function for each one.	The sequence command subclasses themselves, defined in their own modules in the ``code/commands/`` subdirectory, describe the *actual* functionality of each step.The ``instHandler`` process is completely autonomous and communicates with the instruments as required.	This runs until it finishes the sequence, until the sequence is aborted, or until the GUI is closed which kills the program.
 	
-	- As the ``instHandler`` produces data from the measurement, the first priority is to get it written to the file. [#]_
-	The second process runs a function called ``fileHandler``, which takes care of all of this reading and writing.	
-	This one is not autonomous, but rather continuously waits for instructions to come from the parent or instrument processes.
-	These instructions are placed into the ``fileReqQ`` as objects of type ``fileRequest`` (defined in ``FileHandlers.py``) and tell the ``fileHandler`` to do things like "write a line of data", "open a new file", etc.
-	To streamline the common tasks I've wrapped the file in yet another object called a ``DataBase``. This opens closes, writes, and reads the file, but also keeps track of things like which data has already been sent to the GUI for plotting, and which datapoints are new.
-	But really the ``DataBase`` object lurks behind the scenes and does the grunt work.
+	- As the ``instHandler`` produces data from the measurement, the first priority is to get it written to the file. [#]_ The second process runs a function called ``fileHandler``, which takes care of all of this reading and writing.	This one is not autonomous, but rather continuously waits for instructions to come from the parent or instrument processes.	These instructions are placed into the ``fileReqQ`` as objects of type ``fileRequest`` (defined in ``FileHandlers.py``) and tell the ``fileHandler`` to do things like "write a line of data", "open a new file", etc.	To streamline the common tasks I've wrapped the file in yet another object called a ``DataBase``. This opens closes, writes, and reads the file, but also keeps track of things like which data has already been sent to the GUI for plotting, and which datapoints are new.	But really the ``DataBase`` object lurks behind the scenes and does the grunt work.
 	
-	- While all of this happens, the parent process continues to update the GUI.
-	Based on the setup of the plot window or the variable monitors, the parent process sends requests to the ``fileHandler`` asking for the most recent measurements for certain variables.
-	Other than that, it's just business as usual, still controlled by the ``tk`` mainloop.
+	- While all of this happens, the parent process continues to update the GUI.	Based on the setup of the plot window or the variable monitors, the parent process sends requests to the ``fileHandler`` asking for the most recent measurements for certain variables.	Other than that, it's just business as usual, still controlled by the ``tk`` mainloop.
+	
 	
 * Once the sequence completes, both of these extra processes terminate and we go back to the single parent process, as we started.
 	
 
 It's worth mentioning a few subtle points here which might create confusion.
-When the program is **not* running a sequence, the user may still want to see the present values on a particular variable: this would require that a measurement be made.
+When the program is **not** running a sequence, the user may still want to see the present values on a particular variable: this would require that a measurement be made.
 Or, a user may want to look at some data from the previous run to compare: this would require a file to be read.
 These are tasks which, during the measurement, would be handled by the child ``instHandler`` and ``fileHandler`` processes respectively.
 However, since low latency is not as important between measurements, I've opted to run them within the parent process.
@@ -76,7 +67,9 @@ This means that there are functions within the ``ExpGUI`` and ``Plotter`` module
 
 Plotting and the GUI
 --------------------
-As mentioned above,
+As mentioned above, the GUI programming bits are tedious.  Unless you're super excited about learning Tk (which I don't think any sane person should be) then try to minimize the amount of fiddling you do with that.
+If you go for it anyway, I'm not really doing anything fancy--and it's all pretty well documented online.
+I've also tried my best to keep the code commented, keep my GUI bits sensibly-named, and keep it all organized and modular, but it will require significant time investments to make changes to the GUI itself.
 	
 	
 .. [#] Technically, ``instHandler`` takes a serialized version (that is, all of its relevant info is compressed into a string) of the ``Apparatus`` object, and then reconstructs a copy....this is because of some silly rules about what kind of data can be sent between processes.  Though the parent process still has the original ``Apparatus`` object, it simply does nothing during the measurement, and therefore avoids any bus contention.

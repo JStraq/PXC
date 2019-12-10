@@ -172,8 +172,7 @@ class SetCmd(sc.SeqCmd):
 
     def updateOptions(self, v, n, m, ii, level):
         """
-        When the user picks a different instrument or parameter, change other downstream inputs
-        to accommodate valid responses.
+        When the user picks a different instrument or parameter, change other downstream inputs to accommodate valid responses.
         
         Parameters
         ----------
@@ -229,12 +228,14 @@ class SetCmd(sc.SeqCmd):
 
     def createRow(self, new=True):
         """
-        Generate a new set of boxes on the GUI window
+        Add another row for a new parameter to set
+        
         Parameters
         ----------
-        new : boolean
-            If the user created a new one, guess what to use.  Otherwise,
+        new : bool
+            If the user created a new one, guess what to use.  Otherwise,\
             it already exists and we should just use whatever is already there.
+			
         """
         if new:
             ii = int(self.rows)

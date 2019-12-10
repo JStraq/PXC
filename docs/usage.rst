@@ -7,7 +7,6 @@ This section covers the everyday use of PXC, from the experiment setup to the fi
    :maxdepth: 2
    
    usage/install
-   usage/measure
-   usage/sequence
+   usage/setup
    usage/plot
    usage/outputs

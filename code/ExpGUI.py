@@ -853,13 +853,13 @@ class ExpGUI:
         """
         Updates the plots
         
-        Parametrs
-        ---------
+        Parameters
+        ----------
         newsettings : boolean
             whether or not the settings have been changed.  If yes, then a 
             full re-read of the relevant data is required.  If no, then we
             can just append the last few datapoints for a quicker operation.
-        TODO: THIS ISN'T IMPLEMENTED YET
+        
         """
         self.plotMan.updatePlots()
 
@@ -1136,8 +1136,8 @@ class ExpGUI:
         """
         Delete a variable monitor
         
-        Pameters
-        --------
+        Parameters
+        ----------
         ii : int
             The row number of the monitor to be deleted
         """

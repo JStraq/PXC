@@ -18,6 +18,7 @@ You'll then need to make sure you have the following packages.  (You'll probably
 * **PyVISA**    	 	1.8 or greater [#]_
 * **numpy**    		  	1.17.3 or greater
 * **multiprocessing** 	0.70.4 or greater
+* **tzlocal**			2.0.0 or greater
 
 If you plan on doing any developing, then also make sure you have **sphinx** installed as well (2.2.0 or later) so you can update this documentation.
 
