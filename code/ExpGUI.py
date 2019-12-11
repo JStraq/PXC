@@ -51,6 +51,8 @@ class ExpGUI:
         self.app = ap.Apparatus(self.exp, logQ)
 
         self.root.report_callback_exception = self.logError
+        self.instproc = None
+        self.fileproc = None
 
         # # Plot settings
 
@@ -67,6 +69,7 @@ class ExpGUI:
         self.monHeaders = []
 
         self.drawGUI(self.root)
+        self.appcopy = None
         
 
     def logError(self, exception, value, traceback):
@@ -593,19 +596,20 @@ class ExpGUI:
             self.path.insert(0, filename)
                                                         
             # Set up the instrument communication process
-            appcopy = self.app.serialize()
-            instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, self.logQ, appcopy])
-            instproc.name = 'inst'
-            instproc.start()
+            self.appcopy = self.app.serialize()
+            self.app.closeRM()
+            self.instproc = mp.Process(target=ih.instHandler, args=[self.exp, self.instReqQ, self.fileReqQ, self.logQ, self.appcopy])
+            self.instproc.name = 'inst'
+            self.instproc.start()
 
             # Set up the file reading and writing process
             self.monHeaders = self.app.getVarsList()
             if self.exp.isFileOpen():
                 self.exp.closeFile()
             self.plotMan.sequenceStart(filename, self.monHeaders)
-            fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
-            fileproc.name = 'file'
-            fileproc.start()
+            self.fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
+            self.fileproc.name = 'file'
+            self.fileproc.start()
 
             self.plotMan.plotfile = filename
             self.plotMan.clearPlots()
@@ -615,7 +619,7 @@ class ExpGUI:
                 self.logger.critical('requested creation of new file {:s}'.format(filename))
                 self.fileReqQ.put(fh.fileRequest('New File', args=(filename, self.monHeaders)))
                 self.plotMan.availQuants = self.monHeaders
-            self.instReqQ.put(ih.instRequest('Run Sequence', args=()))  # starts running the commands to GPIB
+#            self.instReqQ.put(ih.instRequest('Run Sequence', args=()))  # starts running the commands to GPIB
 
             self.sequenceWatcher()  # instigate the watchdog
 
@@ -673,12 +677,18 @@ class ExpGUI:
 
             self.exp.endSeq()
             self.updateStatus()
-
+            self.app.deserialize(self.appcopy)
+            
+            for x in range(5):              
+                self.logger.critical('{:02d}\tFileProc is alive: {}\t\t InstProc is alive: {}'.format(x, self.fileproc.is_alive(), self.instproc.is_alive()))
+                time.sleep(1)
             return None
+            
         else:
             self.updateStatus()
-
             self.updatePlot()
+            self.logger.critical('FileProc is alive: {}\t\t InstProc is alive: {}'.format(self.fileproc.is_alive(), self.instproc.is_alive()))
+            
             self.root.after(500, self.sequenceWatcher)  # update the gui every 500 ms
 
 

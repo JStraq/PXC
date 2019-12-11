@@ -493,7 +493,6 @@ class CMeasCmd(sc.SeqCmd):
                           range(datapoints)]  # buffer for most recent datapoints: initialize to outside stability window
             timeout = self.timeout  # how long to wait before moving on (regardless of condition
             record = {}
-
             while timeElapsed <= (timeout if timeout > 0 else 1e7):  # if zero, wait about four months)
                 record['Timestamp'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S.%f')  # always grab a timestamp
 
@@ -514,6 +513,7 @@ class CMeasCmd(sc.SeqCmd):
                     else:
                         record[sc.formatHeader(inst, param.name, param.units)] = val[0]
 
+                self.log(str(record))
                 # Push the data onto the queue for writing the file
                 fileReqQ.put(fh.fileRequest('Write Line', record))
 

@@ -28,4 +28,5 @@ def instHandler(*args):
         logger.exception(e)
 
     print('kill_insts')
+    app.rm.close()
     return None

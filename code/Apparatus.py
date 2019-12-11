@@ -47,6 +47,17 @@ class Apparatus:
         self.logger.info('Created an apparatus object')
 
     
+    def closeRM(self):
+        self.logger.critical('NOT REALLY CLOSING RM')
+#        self.rm.visalib._registry.clear()
+#        self.rm.close()
+        
+    def reopenRM(self):
+        for inst in self.instList:
+            inst.visa = inst.apparatus.rm.open_resource(inst.address)
+        
+        
+    
     def serialize(self):
         """ Create a simplified, compressed description of the Apparatus.
         

@@ -85,6 +85,10 @@ class SeqCmd(metaclass=abc.ABCMeta):
         self.gui = gui
 
 
+    def log(self, event):
+        self.app.logger.info(self.title)
+        self.app.logger.info(event)
+
     def __str__(self):
         return self.title
 

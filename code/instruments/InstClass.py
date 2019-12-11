@@ -37,6 +37,11 @@ class Instrument(metaclass=abc.ABCMeta):
         self.model = type(self).__name__
         self.visa = self.apparatus.rm.open_resource(self.address)
         self.writeDelay = 0
+        
+        
+    def log(self, event):
+        self.apparatus.logger.info(self.name)
+        self.apparatus.logger.info(event)
 
     def __str__(self):
         if self.name is not None:
@@ -153,10 +158,10 @@ class Instrument(metaclass=abc.ABCMeta):
         try:
             thisparam = self.params[self.pnames.index(param)]
             if thisparam.query is None:
-                print("'{:s}' is a write-only parameter!".format(param))
+                self.log("'{:s}' is a write-only parameter!".format(param))
         except ValueError:
-            print("No parameter with that name exists!  Options are:")
-            print(self.pnames)
+            self.log("No parameter with that name exists!  Options are:")
+            self.log(self.pnames)
             return None
 
         if thisparam.qmacro is None:
@@ -166,14 +171,14 @@ class Instrument(metaclass=abc.ABCMeta):
                 try:
                     if attempts > 0:
                         self.visa.clear()
-#                    print(thisparam.query, end='  --  ')
+#                    self.log(thisparam.query, end='  --  ')
                     out = self.visa.query(thisparam.query).strip()
                     if thisparam.type == 'disc':
                         out = '{:s},{:s}'.format(out, thisparam.labels[thisparam.vals.index(str(int(out)))])  # forces '00' to match '0'
-#                        print(out)
+#                        self.log(out)
                         return [out]
                     else:
-#                        print(out)
+#                        self.log(out)
                         out = out.split(',')
                         for ii,val in enumerate(out):
                             try:
@@ -184,20 +189,20 @@ class Instrument(metaclass=abc.ABCMeta):
                         return out
 
                 except KeyError:
-                    print("The {:s} at address {:s} doesn't have a parameter named '{:s}'".format(self.model, self.address,
+                    self.log("The {:s} at address {:s} doesn't have a parameter named '{:s}'".format(self.model, self.address,
                                                                                                   param))
                     return None
                 except ValueError:
                     if attempts < limit:
-                        print("Received unexpected value for discrete parameter, retrying:")
+                        self.log("Received unexpected value for discrete parameter, retrying:")
                         out = (out, 'Unknown')
-#                        print(out)
+#                        self.log(out)
                         attempts += 1
                     else:
                         return "Received strange data too many times!:" + out
                 except pyvisa.errors.VisaIOError:
                     if attempts < limit:
-                        print('Command timout, retrying...')
+                        self.log('Command timout, retrying...')
                         attempts += 1
                     else:
                         return 'Command timed out too many times:' + thisparam.query
@@ -210,11 +215,11 @@ class Instrument(metaclass=abc.ABCMeta):
         try:
             thisparam = self.params[self.pnames.index(param)]
             if thisparam.write is None:
-                print("'{:s}' is a read-only parameter!".format(param))
+                self.log("'{:s}' is a read-only parameter!".format(param))
                 return None
         except ValueError:
-            print("No parameter with that name exists!  Options are:")
-            print(self.pnames)
+            self.log("No parameter with that name exists!  Options are:")
+            self.log(self.pnames)
             return None
 
         if thisparam.wmacro is None:
@@ -235,7 +240,7 @@ class Instrument(metaclass=abc.ABCMeta):
                             if thisparam.pmin is not None:
                                 val[ii] = max(val[ii], thisparam.pmin)
                         except TypeError:
-                            print('Invalid Parameter!')
+                            self.log('Invalid Parameter!')
                 elif thisparam.type == 'disc':
                     fmtstring = ['{:d}' for x in range(len(val))]
                     for ii in range(len(val)):
@@ -253,29 +258,29 @@ class Instrument(metaclass=abc.ABCMeta):
                             cmd = ('{:s}{:s}' + fmtstring[ii]).format(cmd, delim, float(val[ii]))
                         elif thisparam.type == 'disc':
                             cmd = ('{:s}{:s}' + fmtstring[ii]).format(cmd, delim, int(val[ii]))
-                print(cmd)
+                self.log(cmd)
                 self.visa.write(cmd)
                 time.sleep(self.writeDelay)
 
             except ValueError:
-                print("The parameter '{:s}' can't accept value '{:s}'.  Acceptable values are:".format(param, str(val)))
+                self.log("The parameter '{:s}' can't accept value '{:s}'.  Acceptable values are:".format(param, str(val)))
                 try:
                     for ii, val in enumerate(thisparam.vals):
                         if thisparam.labels is not None:
-                            print('{:s}\t{:s}'.format(val, thisparam.labels[ii]))
+                            self.log('{:s}\t{:s}'.format(val, thisparam.labels[ii]))
                         else:
-                            print(val)
+                            self.log(val)
                 except TypeError:
                     if thisparam.pmax is not None:
                         if thisparam.pmin is not None:
-                            print('{:f} < val < {:f}'.format(thisparam.pmin, thisparam.pmax))
+                            self.log('{:f} < val < {:f}'.format(thisparam.pmin, thisparam.pmax))
                         else:
-                            print('val < {:f}'.format(thisparam.pmax))
+                            self.log('val < {:f}'.format(thisparam.pmax))
                     else:
                         if thisparam.pmin is not None:
-                            print('{:f} < val'.format(thisparam.pin))
+                            self.log('{:f} < val'.format(thisparam.pin))
                         else:
-                            print('Literally anything. Sorry, Mario, but your error is in another castle.')
+                            self.log('Literally anything. Sorry, Mario, but your error is in another castle.')
 
         else:  # MACRO COMMANDS
             thisparam = self.params[self.pnames.index(param)]
@@ -284,7 +289,7 @@ class Instrument(metaclass=abc.ABCMeta):
 
     def clearGPIB(self):
         self.visa.write('*CLS')
-        print('*CLS')
+        self.log('*CLS')
 
     
     def configInst(self):

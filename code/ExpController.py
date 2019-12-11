@@ -195,9 +195,6 @@ class ExpController:
     def getStatus(self):
         return [self.status0, self.status1, self.status2, self.status3]
 
-    def isRunning(self):
-        return self.running
-
     def setStatus(self, status):
         for ii, s in enumerate(status):
             self.status0 = status[0]

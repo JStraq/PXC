@@ -285,8 +285,8 @@ class DataBase:
         self.unread = []
         if self.file is not None:
             self.file.close()
+            self.logger.critical('closed a file'.format(self.filepath))
         self.file = None
-        self.logger.critical('closed a file'.format(self.filepath))
 
     def readUnread(self):
         """

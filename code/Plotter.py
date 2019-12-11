@@ -24,7 +24,7 @@ class PXCplot:
     Initializes with a single curve, which is the minimum allowed.
     """
 
-    def __init__(self):
+    def __init__(self, logQ):
 
         self.xdata = [[]]
         self.ydata = [[]]
@@ -60,6 +60,8 @@ class PXCplot:
         self.rows = 1
         self.columns = 1
         self.isSetup = False
+        self.logger = logging.getLogger('plot1')
+        self.logger.addHandler(logging.handlers.QueueHandler(logQ))
 
 
         self.figure = Figure(figsize=(7, 7), dpi=75)
@@ -94,9 +96,8 @@ class PXCplot:
 #                tick.set_rotation(45)
         
         for ii in range(len(self.yparams)):
-            print('rebuildplot')
+            self.logger.warning('rebuildplot')
             self.subplot.cla()
-            print(self.xdata[ii])
             self.subplot.plot(self.xdata[ii], self.ydata[ii])
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -114,24 +115,24 @@ class PXCplot:
                         self.ydata[ii].append(float(rec[self.yparams[ii]]))
 
             self.subplot.cla()
-            print(self.yparams)
+            self.logger.warning(self.yparams)
             for ii in range(len(self.yparams)):
-                print('plotplotplot')
+                self.logger.warning('plotplotplot')
                 self.subplot.plot(self.xdata[ii], self.ydata[ii])
                 self.figure.canvas.draw()
                 self.figure.canvas.flush_events()
 
 
     def status(self):
-        print('------------------')
-        print(self.xparam)
-        print(self.yparams)
-        print(self.xdata)
-        print(self.ydata)
-        print(self.lines)
-        print(self.subplot)
-        print(self.figure)
-        print('------------------')
+        self.logger.warning('------------------')
+        self.logger.warning(self.xparam)
+        self.logger.warning(self.yparams)
+        self.logger.warning(self.xdata)
+        self.logger.warning(self.ydata)
+        self.logger.warning(self.lines)
+        self.logger.warning(self.subplot)
+        self.logger.warning(self.figure)
+        self.logger.warning('------------------')
 
 
 class PlotManager:
@@ -146,7 +147,7 @@ class PlotManager:
         self.master = master
 
         # initialize logging object
-        self.logger = logging.getLogger('plot')
+        self.logger = logging.getLogger('plotman')
         self.logger.addHandler(logging.handlers.QueueHandler(logQ))
 
         # Creat a notebook object for handling various tabs, and put some frames on it
@@ -159,7 +160,7 @@ class PlotManager:
         self.plottabs[0].grid_columnconfigure(0, weight=1)
 
 
-        self.plots = [PXCplot()]
+        self.plots = [PXCplot(logQ)]
 
 
         # the Canvas is where we want to plot: there's one per tab.
@@ -221,7 +222,6 @@ class PlotManager:
         headers : list of str
             The column headers in this file.
         """
-        print('prestarting:    ', self.plots[0].xparam, self.plots[0].yparams)
         if self.exp.isFileOpen():
             self.exp.closeFile()
             self.fileReqQ.put(fh.fileRequest('Terminate File Process'))
@@ -230,14 +230,14 @@ class PlotManager:
         self.availQuants = hf.plottable(headers)
         N = len(self.plots[0].yparams)
         M = len(self.availQuants)
-
+        self.logger.warning(self.availQuants)
+        
         if self.plots[0].xparam not in self.availQuants:
             self.plots[0].xparam = self.availQuants[0]
             for ii in range(N):
                 if self.plots[0].yparams[ii] not in self.availQuants:
                     self.plots[0].yparams[ii] = self.availQuants[min(ii+1, M)]
 
-        print('starting:    ', self.plots[0].xparam, self.plots[0].yparams)
         self.clearPlots()
 
         self.isSetup = False
@@ -349,8 +349,8 @@ class PlotManager:
                     self.yaxisBoxes[0].current(0)
                 except:
                     pass
-        except IndexError:
-            pass
+        except IndexError as e:
+            self.logger.exception(e)
 
         tk.Label(self.window, text='Autoscale X:').grid(row=2, column=0, sticky='NSE')
         tk.Label(self.window, text='Autoscale Y1:').grid(row=2, column=2, sticky='NSE')
