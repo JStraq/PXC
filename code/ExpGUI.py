@@ -618,6 +618,7 @@ class ExpGUI:
             if len(self.monHeaders)>1:
                 self.logger.critical('requested creation of new file {:s}'.format(filename))
                 self.fileReqQ.put(fh.fileRequest('New File', args=(filename, self.monHeaders)))
+                self.logger.critical('###PUSH FILEQ: {:s}'.format('new file'))
                 self.plotMan.availQuants = self.monHeaders
 #            self.instReqQ.put(ih.instRequest('Run Sequence', args=()))  # starts running the commands to GPIB
 
@@ -741,6 +742,7 @@ class ExpGUI:
         """
         request = ih.instRequest(reqname, args=arguments)
         self.instReqQ.put(request)
+        self.logger.critical('***LOAD INSTQ: {:s}'.format(reqname))
         self.instReqQ.join()
         return self.ns.instAns
 

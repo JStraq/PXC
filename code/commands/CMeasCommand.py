@@ -516,6 +516,7 @@ class CMeasCmd(sc.SeqCmd):
                 self.log(str(record))
                 # Push the data onto the queue for writing the file
                 fileReqQ.put(fh.fileRequest('Write Line', record))
+                self.log('###LOAD FILEQ: {:s}'.format('write line'))
 
                 if self.wait == 'Condition':
                     inst = self.instruments[self.stringInsts.index(self.waitInst)]
@@ -530,7 +531,8 @@ class CMeasCmd(sc.SeqCmd):
                         break
 
                 time.sleep(self.polltime)  # wait for the specified amount of time
-                timeElapsed = (datetime.now() - starttime).seconds + (datetime.now() - starttime).microseconds * 1e-6
+                timeElapsed = (datetime.today() - starttime).seconds + (datetime.today() - starttime).microseconds * 1e-6
+                self.log(timeElapsed)
                 self.status[2] = 'Timeout:  \t{:.0f} s/{:.0f} s'.format(np.floor(timeElapsed), self.timeout)
                 self.exp.setStatus(self.status)
                 if self.exp.isAborted():

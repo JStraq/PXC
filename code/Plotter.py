@@ -225,6 +225,7 @@ class PlotManager:
         if self.exp.isFileOpen():
             self.exp.closeFile()
             self.fileReqQ.put(fh.fileRequest('Terminate File Process'))
+            self.logger.critical('###LOAD FILEQ: {:s}'.format('terminate2'))
         self.fileReqQ.join()
 
         self.availQuants = hf.plottable(headers)
@@ -249,6 +250,7 @@ class PlotManager:
         Start over: reread all of the data, relabel everything,
         """
         self.fileReqQ.put(fh.fileRequest('Read All', args=(self.plots[0].xparam, self.plots[0].yparams)))
+        self.logger.critical('###LOAD FILEQ: {:s}'.format('read all'))
         self.fileReqQ.join()
         alldata=self.exp.get_fileAns()
 
@@ -262,6 +264,7 @@ class PlotManager:
         """
 
         self.fileReqQ.put(fh.fileRequest('Read Unread', args=(self.plots[0].xparam, self.plots[0].yparams)))
+        self.logger.critical('###LOAD FILEQ: {:s}'.format('read unread'))
         self.fileReqQ.join()
         unread=self.exp.get_fileAns()
 
@@ -584,11 +587,13 @@ class PlotManager:
             else:
                 self.exp.closeFile()
                 self.fileReqQ.put(fh.fileRequest('Terminate File Process'))
+                self.logger.critical('###LOAD FILEQ: {:s}'.format('terminate'))
             fileproc = mp.Process(target=fh.fileHandler, args=[(self.exp, self.fileReqQ, self.logQ)])
             fileproc.name = 'pfile'
             fileproc.start()
 
             self.fileReqQ.put(fh.fileRequest('Open File', args=self.plotFileName))
+            self.logger.critical('###LOAD FILEQ: {:s}'.format('open file'))
             self.fileReqQ.join()
             self.availQuants = hf.plottable(self.exp.get_fileAns())
             self.xaxisBox['state'] = 'normal'

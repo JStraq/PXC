@@ -22,6 +22,7 @@ def fileHandler(args):
         if not fileReqQ.empty():
             try:
                 req = fileReqQ.get()
+                logger.critical('###POP FILEQ: {:s}'.format(req.type))
             except EOFError as e:
                 logger.info('FileReqQ has crashed',)
                 logger.info(e)
@@ -266,6 +267,7 @@ class DataBase:
             columns.
             
         """
+        self.logger.critical('Actually writing to file')
         self.unread.append(record)
         for key in record.keys():
             self.latest[key] = record[key]
